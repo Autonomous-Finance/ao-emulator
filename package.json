@@ -1,0 +1,22 @@
+{
+  "type": "module",
+  "name": "@permaweb/loco",
+  "version": "0.0.19",
+  "main": "index.js",
+  "repository": "https://github.com/twilson63/aos-local.git",
+  "author": "Tom Wilson <tom@hyper.io>",
+  "license": "MIT",
+  "dependencies": {
+    "@permaweb/ao-loader": "^0.0.49",
+    "@permaweb/weavedrive": "^0.0.16",
+    "express": "^5.1.0",
+    "hyper-async": "^1.1.2",
+    "ramda": "^0.30.1",
+    "zod": "^3.24.4"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "test": "node --test --experimental-wasm-memory64"
+  }
+}

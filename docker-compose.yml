@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  aos-local-state:
+    build: .
+    # Ports are no longer exposed directly by this service
+    # Nginx will handle incoming requests and forward them
+    environment:
+      # --- MANDATORY ---
+      - PROCESS_ID_TO_MONITOR=rxxU4g-7tUHGvF28W2l53hxarpbaFR4NaSnOaxx6MIE # Replace with actual Process ID
+      # --- OPTIONAL (Defaults from index.js are used if not set) ---
+      # - PORT=8080 # App listens on 8080 internally, Nginx will connect to this
+      # - AOS_MODULE_ID=YOUR_MODULE_ID_HERE
+      - SU_URL=https://su-router.ao-testnet.xyz
+      # - FULL_STATE_REFRESH_INTERVAL_MS=60000
+      # - MESSAGE_POLL_INTERVAL_MS=5000
+      # - LOADER_UNSAFE_MEMORY=false
+      # - LOADER_DISABLE_METERING=false
+      # - LOAD_FROM_CHECKPOINT=false
+      # - CHECKPOINT_TX_ID=YOUR_CHECKPOINT_TX_ID_HERE
+      # - FORWARD_TO_NONCE_LIMIT=YOUR_NONCE_LIMIT_HERE
+      # - LOAD_FROM_SCRATCH=false
+      # command: ["node", "index.js", "--port=8080"] # Example of overriding CMD or passing CLI args
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8080:80" # Maps host port 8080 to Nginx container port 80
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro # Mount our Nginx config
+    depends_on:
+      - aos-local-state # Ensure app starts before Nginx tries to proxy to it
