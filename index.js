@@ -82,7 +82,7 @@ const SU_URL = cliArgs.SU_URL_CLI || process.env.SU_URL || DEFAULT_SU_URL;
 
 // LOADER_UNSAFE_MEMORY (Boolean)
 const LOADER_UNSAFE_MEMORY = cliArgs.LOADER_UNSAFE_MEMORY !== undefined ? cliArgs.LOADER_UNSAFE_MEMORY :
-    (process.env.LOADER_UNSAFE_MEMORY !== undefined ? process.env.LOADER_UNSAFE_MEMORY === 'true' : false);
+    (process.env.LOADER_UNSAFE_MEMORY !== undefined ? process.env.LOADER_UNSAFE_MEMORY === 'true' : true);
 
 // LOADER_DISABLE_METERING (Boolean)
 const LOADER_DISABLE_METERING = cliArgs.LOADER_DISABLE_METERING !== undefined ? cliArgs.LOADER_DISABLE_METERING :
@@ -116,6 +116,14 @@ const LOAD_FROM_SCRATCH = cliArgs.LOAD_FROM_SCRATCH_CLI !== undefined ? cliArgs.
 // Warning if LOAD_FROM_SCRATCH is used with conflicting checkpoint flags
 if (LOAD_FROM_SCRATCH && (CHECKPOINT_TX_ID || LOAD_FROM_CHECKPOINT)) {
     console.warn('WARNING: LOAD_FROM_SCRATCH is enabled. CHECKPOINT_TX_ID and LOAD_FROM_CHECKPOINT settings will be ignored as the system will start from nonce 0.');
+}
+
+// --- Helper function to add jitter ---
+function applyJitter(intervalMs, maxJitterMs = 5000) {
+    const jitter = Math.random() * maxJitterMs;
+    const newInterval = Math.floor(intervalMs + jitter);
+    console.log(`Applied jitter: original interval ${intervalMs}ms, new interval ${newInterval}ms (jitter up to ${maxJitterMs}ms)`);
+    return newInterval;
 }
 
 // --- Globals ---
@@ -167,18 +175,7 @@ async function fetchAndProcessMessages(fromNonceOverride) {
 
                 let messageToSend = { ...message };
                 if (messageToSend.Tags && Array.isArray(messageToSend.Tags)) {
-                    messageToSend.Tags = flattenTags(messageToSend.Tags);
-                }
-
-                // Copy tags to top level if they don't already exist
-                if (messageToSend.Tags && typeof messageToSend.Tags === 'object') {
-                    for (const key in messageToSend.Tags) {
-                        if (Object.hasOwnProperty.call(messageToSend.Tags, key)) {
-                            if (!(key in messageToSend)) {
-                                messageToSend[key] = messageToSend.Tags[key];
-                            }
-                        }
-                    }
+                    messageToSend = flattenMessageTags(messageToSend);
                 }
 
                 if (!messageToSend.Target) {
@@ -187,7 +184,7 @@ async function fetchAndProcessMessages(fromNonceOverride) {
 
                 console.log(`[fetchAndProcessMessages] Processing message (ID: ${messageToSend.Id}, Nonce: ${messageToSend.Nonce}) for ${messageToSend.Target}...`);
                 try {
-                    console.log(`[fetchAndProcessMessages] messageToSend:`, messageToSend);
+                    // console.log(`[fetchAndProcessMessages] messageToSend:`, messageToSend);
                     const r = await aos.send(messageToSend, globalProcessEnv);
                     console.log(`[fetchAndProcessMessages] aos.send() result:`, r);
                     lastProcessedNonce = messageToSend.Nonce; // Update nonce only after successful send
@@ -259,141 +256,171 @@ async function initialLoadAndCatchup() {
     try {
         if (LOAD_FROM_SCRATCH) {
             console.log('[initialLoadAndCatchup] LOAD_FROM_SCRATCH is true. Initializing module without loading prior state.');
-            // aos instance should already be initialized by initializeAndPrepareAos.
-            // We skip aos.load() and aos.fromCheckpoint().
-            lastProcessedNonce = -1; // This will make fetchAndProcessMessages start from nonce 0
-            loadedSuccessfully = true; // Considered "loaded" as the module is ready for messages from scratch
+            lastProcessedNonce = -1;
+            loadedSuccessfully = true;
             console.log(`[initialLoadAndCatchup] Module ready. lastProcessedNonce set to ${lastProcessedNonce} to fetch all available messages from SU.`);
         } else {
-            // This 'else' block contains the existing logic for checkpoint and live state loading
-            if (wasExplicitCheckpointRequested) {
-                console.log(`[initialLoadAndCatchup] Explicit CHECKPOINT_TX_ID (${CHECKPOINT_TX_ID}) provided. This will be attempted.`);
-                checkpointToLoadTxId = CHECKPOINT_TX_ID;
-                // LOAD_FROM_CHECKPOINT flag is effectively true here due to explicit TX ID
-            } else if (LOAD_FROM_CHECKPOINT) {
-                // No explicit CHECKPOINT_TX_ID, but LOAD_FROM_CHECKPOINT is true, so attempt to find one.
-                console.log('[initialLoadAndCatchup] No explicit CHECKPOINT_TX_ID. LOAD_FROM_CHECKPOINT is true. Attempting to find a suitable checkpoint automatically.');
-                // This block is the existing logic for finding a checkpoint (previously inside `if (LOAD_FROM_CHECKPOINT) { if (!checkpointToLoadTxId) ... }`)
-                try {
-                    let checkpointNode = null;
-                    if (FORWARD_TO_NONCE_LIMIT !== null) {
-                        console.log(`[initialLoadAndCatchup] FORWARD_TO_NONCE_LIMIT is set to ${FORWARD_TO_NONCE_LIMIT}. Searching for a checkpoint <= this nonce.`);
-                        checkpointNode = await findCheckpointBeforeOrEqualToNonce(PROCESS_ID_TO_MONITOR, FORWARD_TO_NONCE_LIMIT);
-                        if (checkpointNode) {
-                            console.log(`[initialLoadAndCatchup] Found checkpoint ID ${checkpointNode.id} (Nonce: ${checkpointNode.tags.find(t => t.name === 'Nonce' || t.name === 'Ordinate')?.value}) suitable for nonce limit.`);
-                        } else {
-                            console.warn(`[initialLoadAndCatchup] No checkpoint found for ${PROCESS_ID_TO_MONITOR} with nonce <= ${FORWARD_TO_NONCE_LIMIT}.`);
-                        }
-                    } else {
-                        console.log('[initialLoadAndCatchup] Fetching the latest checkpoint for the process.');
-                        checkpointNode = await getCheckpointTx(PROCESS_ID_TO_MONITOR);
-                        if (checkpointNode) {
-                            console.log(`[initialLoadAndCatchup] Found latest checkpoint ID ${checkpointNode.id} (Nonce: ${checkpointNode.tags.find(t => t.name === 'Nonce' || t.name === 'Ordinate')?.value}).`);
-                        }
-                    }
+            // First try to load from live state by default
+            console.log('[initialLoadAndCatchup] Attempting to load latest state via live state download...');
+            try {
+                const loadResult = await aos.load(PROCESS_ID_TO_MONITOR);
+                console.log('[initialLoadAndCatchup] loadResult (live state):', loadResult);
 
-                    if (checkpointNode && checkpointNode.id) {
-                        checkpointToLoadTxId = checkpointNode.id;
-                    } else {
-                        console.warn(`[initialLoadAndCatchup] Could not automatically determine a checkpoint TX ID for ${PROCESS_ID_TO_MONITOR}. Checkpoint loading will be skipped for auto-find path.`);
-                    }
-                } catch (findError) {
-                    console.error('[initialLoadAndCatchup] Error while trying to find a suitable checkpoint TX ID for auto-find path:', findError);
-                }
-            } else {
-                // No explicit CHECKPOINT_TX_ID, and LOAD_FROM_CHECKPOINT is false (or not set, defaulting to false).
-                console.log('[initialLoadAndCatchup] No explicit CHECKPOINT_TX_ID and LOAD_FROM_CHECKPOINT is false. Automatic checkpoint search skipped.');
-            }
-
-            // --- Attempt to load checkpoint if one was identified (either explicit or auto-found) ---
-            if (checkpointToLoadTxId) {
-                console.log(`[initialLoadAndCatchup] Attempting to prepare and load from checkpoint TX ID: ${checkpointToLoadTxId}`);
-                try {
-                    const prepResult = await prepareSpecificCheckpoint(PROCESS_ID_TO_MONITOR, checkpointToLoadTxId);
-
-                    if (prepResult.success) {
-                        console.log(`[initialLoadAndCatchup] Checkpoint ${checkpointToLoadTxId} successfully prepared. File: ${prepResult.preparedFilePath}. Nonce: ${prepResult.nonce}.`);
-                        console.log(`[initialLoadAndCatchup] Calling aos.fromCheckpoint(${checkpointToLoadTxId}) to load the prepared checkpoint state into AOS memory.`);
-                        const loadResult = await aos.fromCheckpoint(checkpointToLoadTxId);
-                        console.log('[initialLoadAndCatchup] aos.fromCheckpoint() result after preparing checkpoint:', loadResult);
-                        loadedSuccessfully = true;
-
-                        if (prepResult.nonce !== null) {
-                            console.log(`[initialLoadAndCatchup] Updating lastProcessedNonce from prepared checkpoint: ${prepResult.nonce}.`);
-                            lastProcessedNonce = prepResult.nonce;
-                        } else {
-                            console.warn('[initialLoadAndCatchup] Nonce not available from prepared checkpoint metadata. lastProcessedNonce not updated from checkpoint meta, remains', lastProcessedNonce);
-                        }
-                    } else {
-                        console.error(`[initialLoadAndCatchup] Failed to prepare checkpoint ${checkpointToLoadTxId}: ${prepResult.error}`);
-                        if (wasExplicitCheckpointRequested) {
-                            console.error(`[initialLoadAndCatchup] CRITICAL: The explicitly requested checkpoint TX ID ${CHECKPOINT_TX_ID} could not be prepared. Halting initial load.`);
-                            isPerformingFullLoad = false;
-                            return; // Hard fail for explicit checkpoint
-                        }
-                    }
-                } catch (prepLoadError) {
-                    console.error(`[initialLoadAndCatchup] Critical error during preparation or loading of checkpoint TX ID ${checkpointToLoadTxId}:`, prepLoadError);
-                    if (wasExplicitCheckpointRequested) {
-                        console.error(`[initialLoadAndCatchup] CRITICAL: The explicitly requested checkpoint TX ID ${CHECKPOINT_TX_ID} failed during load process. Halting initial load.`);
-                        isPerformingFullLoad = false;
-                        return; // Hard fail for explicit checkpoint
-                    }
-                }
-            }
-            // Removed the `else { console.warn('[initialLoadAndCatchup] No checkpoint TX ID to load...') }` block here,
-            // as the flow now naturally proceeds to live load if !loadedSuccessfully.
-
-            // --- Fallback to live state load if no checkpoint was loaded successfully (and not a hard fail of an explicit one) ---
-            if (!loadedSuccessfully) {
-                console.log('[initialLoadAndCatchup] No checkpoint successfully loaded (or an auto-found one failed). Proceeding with default live state load method.');
-                try {
-                    const loadResult = await aos.load(PROCESS_ID_TO_MONITOR);
-                    console.log('[initialLoadAndCatchup] loadResult (default/latest):', loadResult);
-
-                    let ordinateFromLoad;
-                    if (loadResult && typeof loadResult === 'object' && !loadResult['cached-state'] && loadResult['last-ordinate'] !== undefined) {
+                let ordinateFromLoad;
+                if (loadResult && typeof loadResult === 'object' && !loadResult['cached-state']) {
+                    // Check 'last-ordinate' specifically for valid, non-null numeric value
+                    if (loadResult['last-ordinate'] !== undefined && loadResult['last-ordinate'] !== null) {
                         ordinateFromLoad = Number(loadResult['last-ordinate']);
-                        if (!isNaN(ordinateFromLoad)) {
-                            console.log(`[initialLoadAndCatchup] Default load complete. Last Ordinate reported: ${ordinateFromLoad}. Updating lastProcessedNonce.`);
+                        // Ensure it's a valid, non-negative number
+                        if (!isNaN(ordinateFromLoad) && ordinateFromLoad >= 0) {
+                            console.log(`[initialLoadAndCatchup] Live state load complete. Last Ordinate reported: ${ordinateFromLoad}. Updating lastProcessedNonce.`);
                             lastProcessedNonce = ordinateFromLoad;
                             loadedSuccessfully = true;
                         } else {
-                            console.warn(`[initialLoadAndCatchup] Default load reported non-numeric last-ordinate: ${loadResult['last-ordinate']}. lastProcessedNonce not updated.`);
-                            loadedSuccessfully = true; // Still consider loaded, even if nonce is weird
+                            console.warn(`[initialLoadAndCatchup] Live state load reported invalid (non-numeric, negative, or NaN) last-ordinate: ${loadResult['last-ordinate']}. Will attempt SU fallback.`);
+                            loadedSuccessfully = false;
                         }
-                    } else if (loadResult && loadResult['cached-state']) {
-                        console.log('[initialLoadAndCatchup] Default state was loaded from local cache (state.bin). lastProcessedNonce remains: ', lastProcessedNonce);
-                        loadedSuccessfully = true;
-                    } else {
-                        console.warn('[initialLoadAndCatchup] Unexpected result from default aos.load(), or no last-ordinate provided:', loadResult, '. lastProcessedNonce remains: ', lastProcessedNonce);
-                        loadedSuccessfully = true; // Consider loaded to allow potential catch-up if possible
+                    } else { // 'last-ordinate' is undefined or null
+                        console.warn(`[initialLoadAndCatchup] Live state load provided no valid last-ordinate (it was undefined or null: ${loadResult['last-ordinate']}). Will attempt SU fallback.`);
+                        loadedSuccessfully = false;
                     }
-                } catch (defaultLoadError) {
-                    console.error(`[initialLoadAndCatchup] Error during default/latest state load for ${PROCESS_ID_TO_MONITOR}:`, defaultLoadError);
-                    // loadedSuccessfully remains false
+                } else if (loadResult && loadResult['cached-state']) {
+                    console.log('[initialLoadAndCatchup] State was loaded from local cache (state.bin). lastProcessedNonce remains: ', lastProcessedNonce);
+                    loadedSuccessfully = true;
+                } else { // Catches loadResult being null, not an object, or other unexpected structures
+                    console.warn('[initialLoadAndCatchup] Live state load returned null, was not an object, or had an unexpected structure. Will attempt SU fallback.', loadResult);
+                    loadedSuccessfully = false;
+                }
+
+                // Fallback: If live load didn't yield a valid nonce, try fetching from SU /latest endpoint
+                if (!loadedSuccessfully && !LOAD_FROM_SCRATCH && !CHECKPOINT_TX_ID && !LOAD_FROM_CHECKPOINT) { // Only if no other specific load strategy is active
+                    console.log(`[initialLoadAndCatchup] Live state load did not provide a valid nonce. Attempting to fetch nonce from SU /latest endpoint for ${PROCESS_ID_TO_MONITOR}.`);
+                    try {
+                        const latestSuUrl = `${SU_URL}/${PROCESS_ID_TO_MONITOR}/latest`;
+                        const suResponse = await fetch(latestSuUrl);
+                        if (suResponse.ok) {
+                            const suData = await suResponse.json();
+                            if (suData && suData.assignment && Array.isArray(suData.assignment.tags)) {
+                                const nonceTag = suData.assignment.tags.find(tag => tag && tag.name === 'Nonce');
+                                if (nonceTag && nonceTag.value !== undefined) {
+                                    const nonceFromSu = parseInt(nonceTag.value, 10);
+                                    if (!isNaN(nonceFromSu) && nonceFromSu >= 0) {
+                                        console.log(`[initialLoadAndCatchup] Successfully fetched Nonce ${nonceFromSu} from SU /latest endpoint (via assignment.tags). Updating lastProcessedNonce.`);
+                                        lastProcessedNonce = nonceFromSu;
+                                        loadedSuccessfully = true;
+                                    } else {
+                                        console.warn(`[initialLoadAndCatchup] Nonce value from SU /latest (assignment.tags.Nonce) is invalid: ${nonceTag.value}.`);
+                                    }
+                                } else {
+                                    console.warn('[initialLoadAndCatchup] Could not find Nonce tag or its value in suData.assignment.tags from SU /latest endpoint.', suData.assignment.tags);
+                                }
+                            } else {
+                                console.warn('[initialLoadAndCatchup] SU /latest endpoint response did not contain expected assignment.tags array structure.', suData);
+                            }
+                        } else {
+                            console.warn(`[initialLoadAndCatchup] Failed to fetch from SU /latest endpoint. Status: ${suResponse.status}`);
+                        }
+                    } catch (suFetchError) {
+                        console.error(`[initialLoadAndCatchup] Error fetching or processing from SU /latest endpoint for ${PROCESS_ID_TO_MONITOR}:`, suFetchError);
+                    }
+                }
+
+            } catch (liveLoadError) {
+                console.error(`[initialLoadAndCatchup] Error during live state load for ${PROCESS_ID_TO_MONITOR}:`, liveLoadError);
+                loadedSuccessfully = false;
+            }
+
+            // Only attempt checkpoint loading if live state load failed or if explicitly requested
+            // and SU fallback also didn't succeed
+            if (!loadedSuccessfully && (wasExplicitCheckpointRequested || LOAD_FROM_CHECKPOINT)) {
+                if (wasExplicitCheckpointRequested) {
+                    console.log(`[initialLoadAndCatchup] Explicit CHECKPOINT_TX_ID (${CHECKPOINT_TX_ID}) provided. This will be attempted.`);
+                    checkpointToLoadTxId = CHECKPOINT_TX_ID;
+                } else if (LOAD_FROM_CHECKPOINT) {
+                    console.log('[initialLoadAndCatchup] LOAD_FROM_CHECKPOINT is true. Attempting to find a suitable checkpoint automatically.');
+                    try {
+                        let checkpointNode = null;
+                        if (FORWARD_TO_NONCE_LIMIT !== null) {
+                            console.log(`[initialLoadAndCatchup] FORWARD_TO_NONCE_LIMIT is set to ${FORWARD_TO_NONCE_LIMIT}. Searching for a checkpoint <= this nonce.`);
+                            checkpointNode = await findCheckpointBeforeOrEqualToNonce(PROCESS_ID_TO_MONITOR, FORWARD_TO_NONCE_LIMIT);
+                            if (checkpointNode) {
+                                console.log(`[initialLoadAndCatchup] Found checkpoint ID ${checkpointNode.id} (Nonce: ${checkpointNode.tags.find(t => t.name === 'Nonce' || t.name === 'Ordinate')?.value}) suitable for nonce limit.`);
+                            } else {
+                                console.warn(`[initialLoadAndCatchup] No checkpoint found for ${PROCESS_ID_TO_MONITOR} with nonce <= ${FORWARD_TO_NONCE_LIMIT}.`);
+                            }
+                        } else {
+                            console.log('[initialLoadAndCatchup] Fetching the latest checkpoint for the process.');
+                            checkpointNode = await getCheckpointTx(PROCESS_ID_TO_MONITOR);
+                            if (checkpointNode) {
+                                console.log(`[initialLoadAndCatchup] Found latest checkpoint ID ${checkpointNode.id} (Nonce: ${checkpointNode.tags.find(t => t.name === 'Nonce' || t.name === 'Ordinate')?.value}).`);
+                            }
+                        }
+
+                        if (checkpointNode && checkpointNode.id) {
+                            checkpointToLoadTxId = checkpointNode.id;
+                        } else {
+                            console.warn(`[initialLoadAndCatchup] Could not automatically determine a checkpoint TX ID for ${PROCESS_ID_TO_MONITOR}. Checkpoint loading will be skipped for auto-find path.`);
+                        }
+                    } catch (findError) {
+                        console.error('[initialLoadAndCatchup] Error while trying to find a suitable checkpoint TX ID for auto-find path:', findError);
+                    }
+                }
+
+                // Attempt to load checkpoint if one was identified
+                if (checkpointToLoadTxId) {
+                    console.log(`[initialLoadAndCatchup] Attempting to prepare and load from checkpoint TX ID: ${checkpointToLoadTxId}`);
+                    try {
+                        const prepResult = await prepareSpecificCheckpoint(PROCESS_ID_TO_MONITOR, checkpointToLoadTxId);
+
+                        if (prepResult.success) {
+                            console.log(`[initialLoadAndCatchup] Checkpoint ${checkpointToLoadTxId} successfully prepared. File: ${prepResult.preparedFilePath}. Nonce: ${prepResult.nonce}.`);
+                            console.log(`[initialLoadAndCatchup] Calling aos.fromCheckpoint(${checkpointToLoadTxId}) to load the prepared checkpoint state into AOS memory.`);
+                            const loadResult = await aos.fromCheckpoint(checkpointToLoadTxId);
+                            console.log('[initialLoadAndCatchup] aos.fromCheckpoint() result after preparing checkpoint:', loadResult);
+                            loadedSuccessfully = true;
+
+                            if (prepResult.nonce !== null) {
+                                console.log(`[initialLoadAndCatchup] Updating lastProcessedNonce from prepared checkpoint: ${prepResult.nonce}.`);
+                                lastProcessedNonce = prepResult.nonce;
+                            } else {
+                                console.warn('[initialLoadAndCatchup] Nonce not available from prepared checkpoint metadata. lastProcessedNonce not updated from checkpoint meta, remains', lastProcessedNonce);
+                            }
+                        } else {
+                            console.error(`[initialLoadAndCatchup] Failed to prepare checkpoint ${checkpointToLoadTxId}: ${prepResult.error}`);
+                            if (wasExplicitCheckpointRequested) {
+                                console.error(`[initialLoadAndCatchup] CRITICAL: The explicitly requested checkpoint TX ID ${CHECKPOINT_TX_ID} could not be prepared. Halting initial load.`);
+                                isPerformingFullLoad = false;
+                                return;
+                            }
+                        }
+                    } catch (prepLoadError) {
+                        console.error(`[initialLoadAndCatchup] Critical error during preparation or loading of checkpoint TX ID ${checkpointToLoadTxId}:`, prepLoadError);
+                        if (wasExplicitCheckpointRequested) {
+                            console.error(`[initialLoadAndCatchup] CRITICAL: The explicitly requested checkpoint TX ID ${CHECKPOINT_TX_ID} failed during load process. Halting initial load.`);
+                            isPerformingFullLoad = false;
+                            return;
+                        }
+                    }
                 }
             }
         }
 
-        // --- Message Catch-up Logic (adjusting conditions) ---
+        // Message Catch-up Logic
         if (loadedSuccessfully) {
             let shouldCatchup = true;
             if (LOAD_FROM_SCRATCH) {
                 console.log(`[initialLoadAndCatchup] LOAD_FROM_SCRATCH active. Proceeding with message catch-up from nonce ${lastProcessedNonce + 1} (respecting FORWARD_TO_NONCE_LIMIT: ${FORWARD_TO_NONCE_LIMIT}).`);
             } else if (wasExplicitCheckpointRequested) {
-                // An explicit checkpoint was requested and successfully loaded.
-                // lastProcessedNonce is from this explicit checkpoint.
                 if (FORWARD_TO_NONCE_LIMIT === null || lastProcessedNonce >= FORWARD_TO_NONCE_LIMIT) {
                     console.log(`[initialLoadAndCatchup] Loaded explicit checkpoint ${CHECKPOINT_TX_ID} (Nonce: ${lastProcessedNonce}). FORWARD_TO_NONCE_LIMIT (${FORWARD_TO_NONCE_LIMIT}) does not require further message processing. Initial message catch-up will be skipped.`);
                     shouldCatchup = false;
                 } else {
                     console.log(`[initialLoadAndCatchup] Loaded explicit checkpoint ${CHECKPOINT_TX_ID} (Nonce: ${lastProcessedNonce}). FORWARD_TO_NONCE_LIMIT (${FORWARD_TO_NONCE_LIMIT}) is higher. Proceeding with message catch-up.`);
                 }
-            } else if (checkpointToLoadTxId) { // An auto-found checkpoint was loaded.
+            } else if (checkpointToLoadTxId) {
                 console.log(`[initialLoadAndCatchup] State loaded from automatically determined checkpoint ${checkpointToLoadTxId} (Nonce: ${lastProcessedNonce}). Proceeding with standard message catch-up logic (respecting FORWARD_TO_NONCE_LIMIT: ${FORWARD_TO_NONCE_LIMIT}).`);
-            } else { // Live state was loaded (no explicit TX, and either LOAD_FROM_CHECKPOINT was false or auto-find failed).
-                console.log(`[initialLoadAndCatchup] State loaded (default method/live state). Proceeding with standard message catch-up logic from nonce ${lastProcessedNonce} (respecting FORWARD_TO_NONCE_LIMIT: ${FORWARD_TO_NONCE_LIMIT}).`);
+            } else {
+                console.log(`[initialLoadAndCatchup] State loaded via live state download. Proceeding with standard message catch-up logic from nonce ${lastProcessedNonce} (respecting FORWARD_TO_NONCE_LIMIT: ${FORWARD_TO_NONCE_LIMIT}).`);
             }
 
             if (shouldCatchup) {
@@ -402,7 +429,6 @@ async function initialLoadAndCatchup() {
             }
         } else {
             console.error(`[initialLoadAndCatchup] CRITICAL: State could not be loaded for ${PROCESS_ID_TO_MONITOR}.`);
-            // More specific error based on context if wasExplicitCheckpointRequested and it failed
             if (wasExplicitCheckpointRequested) {
                 console.error(`[initialLoadAndCatchup] This was attempted due to an explicitly provided CHECKPOINT_TX_ID: ${CHECKPOINT_TX_ID}, which failed to load.`);
             } else if (LOAD_FROM_CHECKPOINT && !checkpointToLoadTxId) {
@@ -522,14 +548,15 @@ async function initializeAndPrepareAos() {
 
         if (!CHECKPOINT_TX_ID) {
             console.log(`[initializeAndPrepareAos] Periodic full state load interval will be set (if uncommented below). CHECKPOINT_TX_ID is not set.`);
-            // setInterval(performPeriodicFullLoad, FULL_STATE_REFRESH_INTERVAL_MS);
+            // setInterval(performPeriodicFullLoad, applyJitter(FULL_STATE_REFRESH_INTERVAL_MS));
         } else {
             console.log(`[initializeAndPrepareAos] Periodic full state load will NOT be set (even if uncommented below) because a specific CHECKPOINT_TX_ID (${CHECKPOINT_TX_ID}) was provided.`);
             // If the line was uncommented, it would be here, but still effectively disabled by the 'else' block.
-            // setInterval(performPeriodicFullLoad, FULL_STATE_REFRESH_INTERVAL_MS); 
+            // setInterval(performPeriodicFullLoad, applyJitter(FULL_STATE_REFRESH_INTERVAL_MS));
         }
 
-        setInterval(pollForNewMessages, MESSAGE_POLL_INTERVAL_MS);
+        const jitteredMessagePollInterval = applyJitter(MESSAGE_POLL_INTERVAL_MS);
+        setInterval(pollForNewMessages, jitteredMessagePollInterval);
         return aos;
     } catch (error) {
         console.error('Failed to initialize aoslocal:', error);
@@ -551,6 +578,51 @@ function flattenTags(tagsArray) {
         }
         return obj;
     }, {});
+}
+
+function flattenMessageTags(message) {
+    // Create a copy of the message to avoid modifying the original
+    const flattenedMessage = { ...message };
+
+    // Initialize Tags object if it doesn't exist
+    if (!flattenedMessage.Tags) {
+        flattenedMessage.Tags = {};
+    }
+
+    // If Tags is an array, flatten it
+    if (Array.isArray(message.Tags)) {
+        message.Tags.forEach(tag => {
+            if (tag && tag.name && tag.value !== undefined) {
+                // Add to root level
+                flattenedMessage[tag.name] = tag.value;
+                // Add to Tags object
+                flattenedMessage.Tags[tag.name] = tag.value;
+            }
+        });
+    }
+
+    return flattenedMessage;
+}
+
+function formatAOS(ctx) {
+    const aoMsg = {
+        Id: "MESSAGE_ID",
+        Target: ctx.msg?.Target || DEFAULT_ENV.Process.Id,
+        Owner: ctx.msg?.Owner || DEFAULT_ENV.Process.Owner,
+        Data: ctx.msg?.Data || "",
+        Module: "MODULE",
+        ["Block-Height"]: "1",
+        From: ctx.msg?.From || ctx.msg?.Owner || DEFAULT_ENV.Process.Owner,
+        Timestamp: (new Date().getTime()).toString(),
+        Tags: Object
+            .keys(ctx.msg)
+            .filter(k => !["Target", "Owner", "Data", "Anchor", "Tags"].includes(k))
+            .map(k => ({ name: k, value: ctx.msg[k] }))
+    }
+
+    // Flatten the tags in the message
+    ctx.msg = flattenMessageTags(aoMsg);
+    return ctx
 }
 
 app.post('/dry-run', async (req, res) => {
@@ -593,7 +665,9 @@ app.post('/dry-run', async (req, res) => {
             Spawns: result.Spawns,
             Error: result.Error,
             Assignments: result.Assignments, // If this field exists and is needed
-            GasUsed: result.GasUsed // If this field exists and is needed
+            GasUsed: result.GasUsed, // If this field exists and is needed
+            Emulated: true, // Added flag
+            ProcessId: PROCESS_ID_TO_MONITOR // Added Process ID
             // Add any other relevant fields from the result, but explicitly exclude Memory
         };
 

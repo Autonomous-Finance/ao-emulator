@@ -5,7 +5,7 @@ services:
   aos-agent-factory:
     build: .
     environment:
-      - PROCESS_ID_TO_MONITOR=x_WysdFwKD_buywRK9qLA7IexdlsvVTVq6ESWMRCzFY
+      - PROCESS_ID_TO_MONITOR=AyM7Y57xDnioSDsfkdKMWCZ8FaaqJOYbR5XYDy_F-IU
       - PORT=3001
       - SU_URL=https://su-router.ao-testnet.xyz
       - MESSAGE_POLLING_INTERVAL=10s
@@ -16,7 +16,7 @@ services:
   aos-permaweb-index:
     build: .
     environment:
-      - PROCESS_ID_TO_MONITOR=rxxU4g-7tUHGvF28W2l53hxarpbaFR4NaSnOaxx6MIE
+      - PROCESS_ID_TO_MONITOR=SzooQdJ_y0h9aRreZTIE5EGwkDuLvaR4qnjJztPumPo
       - PORT=3002
       - SU_URL=https://su-router.ao-testnet.xyz
       - MESSAGE_POLLING_INTERVAL=10s
@@ -27,7 +27,7 @@ services:
   aos-dexi:
     build: .
     environment:
-      - PROCESS_ID_TO_MONITOR=Meb6GwY5I9QN77F0c5Ku2GpCFxtYyG1mfJus2GWYtII
+      - PROCESS_ID_TO_MONITOR=UNjNaSFkjRH5hGOvQ7YCYVu_q7HLwjtv0d50Bp9vGNo
       - PORT=3003
       - SU_URL=https://su-router.ao-testnet.xyz
       - MESSAGE_POLLING_INTERVAL=10s
@@ -40,7 +40,7 @@ services:
   aos-token-locker:
     build: .
     environment:
-      - PROCESS_ID_TO_MONITOR=jxiKuu_21_KjNga8KxH1h8fJeoCl9DzcEjGBiKN66DY
+      - PROCESS_ID_TO_MONITOR=H0iGy5TgV_7ckTPB1COxwtOz2muCJqiXz_p_W0P0xN8
       - PORT=3005
       - SU_URL=https://su-router.ao-testnet.xyz
       - MESSAGE_POLLING_INTERVAL=10s
@@ -51,7 +51,7 @@ services:
   aos-permaweb-index-token:
     build: .
     environment:
-      - PROCESS_ID_TO_MONITOR=4hXj_E-5fAKmo4E8KjgQvuDJKAFk9P2grhycVmISDLs
+      - PROCESS_ID_TO_MONITOR=ashzRmPuxsO6xSZulIeZl-rQ-DsFsjwLYc8IIlY-Ots
       - PORT=3006
       - SU_URL=https://su-router.ao-testnet.xyz
       - MESSAGE_POLLING_INTERVAL=10s
@@ -62,7 +62,7 @@ services:
   aos-registry:
     build: .
     environment:
-      - PROCESS_ID_TO_MONITOR=iZuNCnURIQHazG9cIui2B5FdQzWRE8TMa28i6nHr5ic
+      - PROCESS_ID_TO_MONITOR=ju7evX0oEl4X1W7-3gxsq4uMdjUOHXYMUp_VvWgw90k
       - PORT=3007
       - SU_URL=https://su-router.ao-testnet.xyz
       - MESSAGE_POLLING_INTERVAL=10s
@@ -73,7 +73,7 @@ services:
   aos-wrapped-ar:
     build: .
     environment:
-      - PROCESS_ID_TO_MONITOR=xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
+      - PROCESS_ID_TO_MONITOR=SdykGZN16NdQrbPyIJSipet6_c0pIjFFIRDXkJkZFK8
       - PORT=3008
       - SU_URL=https://su-router.ao-testnet.xyz
       - MESSAGE_POLLING_INTERVAL=10s
@@ -84,7 +84,7 @@ services:
   aos-token-factory:
     build: .
     environment:
-      - PROCESS_ID_TO_MONITOR=mQES2_hwlXQS8JVSdPJvRTkp78slLCl2gpm6sW3CK9w
+      - PROCESS_ID_TO_MONITOR=qH76V-hcgOXQuyQ5mbUfa7J2o0FK8p_rgLBcQb45tLQ
       - PORT=3010
       - SU_URL=https://su-router.ao-testnet.xyz
       - MESSAGE_POLLING_INTERVAL=10s
@@ -95,7 +95,7 @@ services:
   aos-portfolio-agent-factory:
     build: .
     environment:
-      - PROCESS_ID_TO_MONITOR=OF3TuQgd3RkTb9HSs_V94vVPFeRXi1h0EGJhSgda7OI
+      - PROCESS_ID_TO_MONITOR=vKVhuEP-dbwi7CA7Ca1_PcIDgtFprE_tYxe7x-GR2-A
       - PORT=3011
       - SU_URL=https://su-router.ao-testnet.xyz
       - MESSAGE_POLLING_INTERVAL=10s
@@ -106,7 +106,7 @@ services:
   aos-flp-factory:
     build: .
     environment:
-      - PROCESS_ID_TO_MONITOR=It-_AKlEfARBmJdbJew1nG9_hIaZt0t20wQc28mFGBE
+      - PROCESS_ID_TO_MONITOR=JC0_BVWWf7xbmXUeKskDBRQ5fJo8fWgPtaEYMOf-Vbk
       - PORT=3012
       - SU_URL=https://su-router.ao-testnet.xyz
       - MESSAGE_POLLING_INTERVAL=10s
@@ -117,7 +117,7 @@ services:
   aos-amm-factory:
     build: .
     environment:
-      - PROCESS_ID_TO_MONITOR=3XBGLrygs11K63F_7mldWz4veNx6Llg6hI2yZs8LKHo
+      - PROCESS_ID_TO_MONITOR=50U3BcLrRF2Bq51eeJdVdoMzrQMgjCeVai7LWY4Wm_s
       - PORT=3013
       - SU_URL=https://su-router.ao-testnet.xyz
       - MESSAGE_POLLING_INTERVAL=10s
@@ -140,7 +140,7 @@ services:
     ports:
       - "8080:80"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/nginx.staging.conf:/etc/nginx/nginx.conf:ro # Point to staging nginx config
     depends_on:
       - aos-agent-factory
       - aos-permaweb-index
