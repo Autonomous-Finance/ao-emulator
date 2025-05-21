@@ -3,6 +3,7 @@ import { aoslocal, loadEnv } from './src/index.js';
 import { AoReadState } from './src/su.js';
 import { getCheckpointTx, fetchCheckpoint, findCheckpointBeforeOrEqualToNonce, prepareSpecificCheckpoint } from './src/checkpoint.js';
 import fs from 'fs'; // Added fs import for file operations
+import cors from 'cors'; // Add cors import
 
 // --- Helper function to parse CLI Args (simple version) ---
 function parseCliArgs(argv) {
@@ -186,7 +187,7 @@ async function fetchAndProcessMessages(fromNonceOverride) {
                 try {
                     // console.log(`[fetchAndProcessMessages] messageToSend:`, messageToSend);
                     const r = await aos.send(messageToSend, globalProcessEnv);
-                    console.log(`[fetchAndProcessMessages] aos.send() result:`, r);
+                    // console.log(`[fetchAndProcessMessages] aos.send() result:`, r);
                     lastProcessedNonce = messageToSend.Nonce; // Update nonce only after successful send
                     console.log(`[fetchAndProcessMessages] Successfully processed message ID: ${messageToSend.Id}. New lastProcessedNonce: ${lastProcessedNonce}`);
                 } catch (sendError) {
@@ -565,6 +566,7 @@ async function initializeAndPrepareAos() {
 }
 
 const app = express();
+app.use(cors()); // Enable CORS for all routes
 app.use(express.json());
 
 // --- Helper function to flatten Tags ---
@@ -593,9 +595,11 @@ function flattenMessageTags(message) {
     if (Array.isArray(message.Tags)) {
         message.Tags.forEach(tag => {
             if (tag && tag.name && tag.value !== undefined) {
-                // Add to root level
-                flattenedMessage[tag.name] = tag.value;
-                // Add to Tags object
+                // Only add to root level if it doesn't already exist
+                if (flattenedMessage[tag.name] === undefined) {
+                    flattenedMessage[tag.name] = tag.value;
+                }
+                // Always add to Tags object
                 flattenedMessage.Tags[tag.name] = tag.value;
             }
         });
@@ -634,6 +638,7 @@ app.post('/dry-run', async (req, res) => {
     const queryProcessId = req.query['process-id'];
 
     console.log(`Received /dry-run request for query process-id: ${queryProcessId || 'Not Provided'}`);
+    console.log('Original message:', JSON.stringify(message, null, 2));
 
     if (typeof message !== 'object' || message === null || !message.Target || !message.Tags) {
         return res.status(400).json({ error: 'Invalid or incomplete message object in request body. \'Target\' and \'Tags\' are required.' });
@@ -646,29 +651,28 @@ app.post('/dry-run', async (req, res) => {
     console.log(`Dry-running message for Target: ${message.Target} (Wasm state is for ${PROCESS_ID_TO_MONITOR})`);
 
     try {
-        // Flatten the tags before sending
-        if (message.Tags) {
-            message.Tags = flattenTags(message.Tags);
-        }
+        // Create a new message object with flattened tags
+        const processedMessage = flattenMessageTags(message);
+        console.log('Processed message after flattening:', JSON.stringify(processedMessage, null, 2));
 
         console.log('sending message to aos.send...');
         const startTime = Date.now();
-        const result = await aos.send(message, globalProcessEnv, false);
+        console.log('message:', processedMessage);
+        const result = await aos.send(processedMessage, globalProcessEnv, false);
         const duration = Date.now() - startTime;
         console.log(`Dry-run for message to ${message.Target} completed in ${duration}ms.`);
 
-        console.log(result);
+        console.log('Result:', JSON.stringify(result, null, 2));
         // Create a response payload excluding the Memory field
         const responsePayload = {
             Output: result.Output,
             Messages: result.Messages,
             Spawns: result.Spawns,
             Error: result.Error,
-            Assignments: result.Assignments, // If this field exists and is needed
-            GasUsed: result.GasUsed, // If this field exists and is needed
-            Emulated: true, // Added flag
-            ProcessId: PROCESS_ID_TO_MONITOR // Added Process ID
-            // Add any other relevant fields from the result, but explicitly exclude Memory
+            Assignments: result.Assignments,
+            GasUsed: result.GasUsed,
+            Emulated: true,
+            ProcessId: PROCESS_ID_TO_MONITOR
         };
 
         // Clean up undefined fields from responsePayload to make it cleaner

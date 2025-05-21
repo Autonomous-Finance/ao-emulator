@@ -69,17 +69,6 @@ services:
     networks:
       - aos-network
 
-  # Wrapped AR Process
-  aos-wrapped-ar:
-    build: .
-    environment:
-      - PROCESS_ID_TO_MONITOR=xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
-      - PORT=3008
-      - SU_URL=https://su-router.ao-testnet.xyz
-      - MESSAGE_POLLING_INTERVAL=10s
-    networks:
-      - aos-network
-
   # Token Factory Process
   aos-token-factory:
     build: .
@@ -135,6 +124,17 @@ services:
     networks:
       - aos-network
 
+  # AO Process
+  aos-ao:
+    build: .
+    environment:
+      - PROCESS_ID_TO_MONITOR=0syT13r0s0tgPmIed95bJnuSqaD29HQNN8D3ElLSrsc
+      - PORT=3016
+      - SU_URL=https://su-router.ao-testnet.xyz
+      - MESSAGE_POLLING_INTERVAL=10s
+    networks:
+      - aos-network
+
   nginx:
     image: nginx:alpine
     ports:
@@ -148,12 +148,12 @@ services:
       - aos-token-locker
       - aos-permaweb-index-token
       - aos-registry
-      - aos-wrapped-ar
       - aos-token-factory
       - aos-portfolio-agent-factory
       - aos-flp-factory
       - aos-amm-factory
       - aos-payment-token
+      - aos-ao
     networks:
       - aos-network
 
