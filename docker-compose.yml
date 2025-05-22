@@ -163,6 +163,19 @@ services:
     deploy:
       replicas: 2
 
+  # Botega FLP Process
+  aos-botega-flp:
+    build: .
+    environment:
+      - PROCESS_ID_TO_MONITOR=UcBPqkaVI7W4I_YMznrt2JUoyc_7TScCdZWOOSBvMSU
+      - PORT=3021
+      - SU_URL=https://su-router.ao-testnet.xyz
+      - MESSAGE_POLLING_INTERVAL=10s
+    networks:
+      - aos-network
+    deploy:
+      replicas: 2
+
   # QAR Process
   aos-qar:
     build: .
@@ -208,6 +221,7 @@ services:
       - aos-ao
       - aos-delegation-oracle
       - aos-delegation-historian
+      - aos-botega-flp
       - aos-qar
       - aos-wrapped-ar
       - aos-redstone-proxy
