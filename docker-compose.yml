@@ -134,6 +134,58 @@ services:
       - MESSAGE_POLLING_INTERVAL=10s
     networks:
       - aos-network
+    deploy:
+      replicas: 4
+
+  # Delegation Oracle Process
+  aos-delegation-oracle:
+    build: .
+    environment:
+      - PROCESS_ID_TO_MONITOR=cuxSKjGJ-WDB9PzSkVkVVrIBSh3DrYHYz44usQOj5yE
+      - PORT=3017
+      - SU_URL=https://su-router.ao-testnet.xyz
+      - MESSAGE_POLLING_INTERVAL=10s
+    networks:
+      - aos-network
+    deploy:
+      replicas: 2
+
+  # Delegation Historian Process
+  aos-delegation-historian:
+    build: .
+    environment:
+      - PROCESS_ID_TO_MONITOR=NRP0xtzeV9MHgwLmgD254erUB7mUjMBhBkYkNYkbNEo
+      - PORT=3018
+      - SU_URL=https://su-router.ao-testnet.xyz
+      - MESSAGE_POLLING_INTERVAL=10s
+    networks:
+      - aos-network
+    deploy:
+      replicas: 2
+
+  # QAR Process
+  aos-qar:
+    build: .
+    environment:
+      - PROCESS_ID_TO_MONITOR=NG-0lVX882MG5nhARrSzyprEK6ejonHpdUmaaMPsHE8
+      - PORT=3019
+      - SU_URL=https://su-router.ao-testnet.xyz
+      - MESSAGE_POLLING_INTERVAL=10s
+    networks:
+      - aos-network
+
+  # Wrapped AR Process
+  aos-wrapped-ar:
+    build: .
+    environment:
+      - PROCESS_ID_TO_MONITOR=xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
+      - PORT=3020
+      - SU_URL=https://su-router.ao-testnet.xyz
+      - MESSAGE_POLLING_INTERVAL=10s
+    networks:
+      - aos-network
+    deploy:
+      replicas: 2
 
   nginx:
     image: nginx:alpine
@@ -154,6 +206,11 @@ services:
       - aos-amm-factory
       - aos-payment-token
       - aos-ao
+      - aos-delegation-oracle
+      - aos-delegation-historian
+      - aos-qar
+      - aos-wrapped-ar
+      - aos-redstone-proxy
     networks:
       - aos-network
 
