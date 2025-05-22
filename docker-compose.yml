@@ -224,7 +224,6 @@ services:
       - aos-botega-flp
       - aos-qar
       - aos-wrapped-ar
-      - aos-redstone-proxy
     networks:
       - aos-network
 
