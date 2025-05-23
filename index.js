@@ -634,13 +634,11 @@ async function initializeAndPrepareAos() {
 
         await initialLoadAndCatchup();
 
-        if (!CHECKPOINT_TX_ID) {
+        if (!CHECKPOINT_TX_ID && !LOAD_FROM_SCRATCH && !LOAD_FROM_CHECKPOINT && !FORWARD_TO_NONCE_LIMIT) {
             console.log(`[initializeAndPrepareAos] Periodic full state load interval will be set (if uncommented below). CHECKPOINT_TX_ID is not set.`);
-            // setInterval(performPeriodicFullLoad, applyJitter(FULL_STATE_REFRESH_INTERVAL_MS));
+            setInterval(performPeriodicFullLoad, applyJitter(FULL_STATE_REFRESH_INTERVAL_MS));
         } else {
-            console.log(`[initializeAndPrepareAos] Periodic full state load will NOT be set (even if uncommented below) because a specific CHECKPOINT_TX_ID (${CHECKPOINT_TX_ID}) was provided.`);
-            // If the line was uncommented, it would be here, but still effectively disabled by the 'else' block.
-            // setInterval(performPeriodicFullLoad, applyJitter(FULL_STATE_REFRESH_INTERVAL_MS));
+            console.log(`[initializeAndPrepareAos] Periodic full state load will NOT be set`);
         }
 
         const jitteredMessagePollInterval = applyJitter(MESSAGE_POLL_INTERVAL_MS);
