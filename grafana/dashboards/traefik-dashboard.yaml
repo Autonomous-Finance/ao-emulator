@@ -1,0 +1,11 @@
+apiVersion: 1
+providers:
+  - name: 'Traefik'
+    orgId: 1
+    folder: 'Traefik'
+    folderUid: traefik
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/provisioning/dashboards/Traefik

@@ -1,195 +1,289 @@
 version: '3.8'
 
+x-service-base: &service-base
+  build: .
+  expose: ["8080"]
+  networks: [aos-network]
+
+x-env-base: &env-base
+  SU_URL: https://su-router.ao-testnet.xyz
+  MESSAGE_POLLING_INTERVAL: 10s
+  PORT: 8080
+
 services:
+  traefik:
+    image: traefik:v3.4
+    command:
+      # ────────── core ──────────
+      - --log.level=INFO              # keep DEBUG for trouble-shooting only
+      - --providers.docker=true
+      - --providers.docker.exposedByDefault=false
+
+      # ────────── entry-points ─────
+      - --entrypoints.web.address=:80
+      - --entrypoints.metrics.address=:9100   # ← Prometheus will scrape here
+
+      # ────────── dashboard / api ─
+      - --api.dashboard=true
+      - --api.debug=true                    # adds /api/rawdata
+
+      # ────────── ACCESS LOG ───────
+      - --accesslog=true                    # turn it on :contentReference[oaicite:0]{index=0}
+      - --accesslog.format=json             # easier to ship to Loki/ELK
+      - --accesslog.addinternals=true       # include dashboard, ping, etc.
+
+      # ────────── METRICS (Prom) ───
+      - --metrics.prometheus=true           # exporter on the chosen EP :contentReference[oaicite:1]{index=1}
+      - --metrics.prometheus.entrypoint=metrics
+      - --metrics.prometheus.addrouterslabels=true
+      - --metrics.prometheus.addserviceslabels=true
+    ports:
+      - "80:80"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+    - traefik.enable=true
+    - traefik.http.routers.tkd.rule=Host(`traefik.localhost`)
+    - traefik.http.routers.tkd.entrypoints=web           # or websecure
+    - traefik.http.routers.tkd.service=api@internal
+    networks: [aos-network]
+
   # Agent Factory Process
   aos-agent-factory:
-    build: .
+    <<: *service-base
+    deploy:
+      replicas: 1
     environment:
-      - PROCESS_ID_TO_MONITOR=x_WysdFwKD_buywRK9qLA7IexdlsvVTVq6ESWMRCzFY
-      - PORT=3001
-      - SU_URL=https://su-router.ao-testnet.xyz
-      - MESSAGE_POLLING_INTERVAL=10s
-    networks:
-      - aos-network
+      <<: *env-base
+      PROCESS_ID_TO_MONITOR: x_WysdFwKD_buywRK9qLA7IexdlsvVTVq6ESWMRCzFY
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.agent.rule=Query(`process-id=x_WysdFwKD_buywRK9qLA7IexdlsvVTVq6ESWMRCzFY`)
+      - traefik.http.routers.agent.entrypoints=web
+      - traefik.http.services.agent.loadbalancer.server.port=8080
 
   # Permaweb Index Process
   aos-permaweb-index:
-    build: .
+    <<: *service-base
+    deploy:
+      replicas: 1
     environment:
-      - PROCESS_ID_TO_MONITOR=rxxU4g-7tUHGvF28W2l53hxarpbaFR4NaSnOaxx6MIE
-      - PORT=3002
-      - SU_URL=https://su-router.ao-testnet.xyz
-      - MESSAGE_POLLING_INTERVAL=10s
-    networks:
-      - aos-network
+      <<: *env-base
+      PROCESS_ID_TO_MONITOR: rxxU4g-7tUHGvF28W2l53hxarpbaFR4NaSnOaxx6MIE
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.permaweb.rule=Query(`process-id=rxxU4g-7tUHGvF28W2l53hxarpbaFR4NaSnOaxx6MIE`)
+      - traefik.http.routers.permaweb.entrypoints=web
+      - traefik.http.services.permaweb.loadbalancer.server.port=8080
 
   # Dexi Process
   aos-dexi:
-    build: .
-    environment:
-      - PROCESS_ID_TO_MONITOR=Meb6GwY5I9QN77F0c5Ku2GpCFxtYyG1mfJus2GWYtII
-      - PORT=3003
-      - SU_URL=https://su-router.ao-testnet.xyz
-      - MESSAGE_POLLING_INTERVAL=10s
-    networks:
-      - aos-network
+    <<: *service-base
     deploy:
       replicas: 4
-
-  # Token Locker Process
-  aos-token-locker:
-    build: .
     environment:
-      - PROCESS_ID_TO_MONITOR=jxiKuu_21_KjNga8KxH1h8fJeoCl9DzcEjGBiKN66DY
-      - PORT=3005
-      - SU_URL=https://su-router.ao-testnet.xyz
-      - MESSAGE_POLLING_INTERVAL=10s
-    networks:
-      - aos-network
+      <<: *env-base
+      PROCESS_ID_TO_MONITOR: Meb6GwY5I9QN77F0c5Ku2GpCFxtYyG1mfJus2GWYtII
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.dexi.rule=Query(`process-id=Meb6GwY5I9QN77F0c5Ku2GpCFxtYyG1mfJus2GWYtII`)
+      - traefik.http.routers.dexi.entrypoints=web
+      - traefik.http.services.dexi.loadbalancer.server.port=8080
+      # fallback:
+      - traefik.http.routers.dexi-default.rule=PathPrefix(`/`)
+      - traefik.http.routers.dexi-default.priority=1
+
+
+  #Token Locker Process
+  aos-token-locker:
+    <<: *service-base
+    deploy:
+      replicas: 1
+    environment:
+      <<: *env-base
+      PROCESS_ID_TO_MONITOR: jxiKuu_21_KjNga8KxH1h8fJeoCl9DzcEjGBiKN66DY
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.token-locker.rule=Query(`process-id=jxiKuu_21_KjNga8KxH1h8fJeoCl9DzcEjGBiKN66DY`)
+      - traefik.http.routers.token-locker.entrypoints=web
+      - traefik.http.services.token-locker.loadbalancer.server.port=8080
 
   # Permaweb Index Token Process
   aos-permaweb-index-token:
-    build: .
+    <<: *service-base
+    deploy:
+      replicas: 1
     environment:
-      - PROCESS_ID_TO_MONITOR=4hXj_E-5fAKmo4E8KjgQvuDJKAFk9P2grhycVmISDLs
-      - PORT=3006
-      - SU_URL=https://su-router.ao-testnet.xyz
-      - MESSAGE_POLLING_INTERVAL=10s
-    networks:
-      - aos-network
+      <<: *env-base
+      PROCESS_ID_TO_MONITOR: 4hXj_E-5fAKmo4E8KjgQvuDJKAFk9P2grhycVmISDLs
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.permaweb-token.rule=Query(`process-id=4hXj_E-5fAKmo4E8KjgQvuDJKAFk9P2grhycVmISDLs`)
+      - traefik.http.routers.permaweb-token.entrypoints=web
+      - traefik.http.services.permaweb-token.loadbalancer.server.port=8080
 
   # Registry Process
   aos-registry:
-    build: .
+    <<: *service-base
+    deploy:
+      replicas: 1
     environment:
-      - PROCESS_ID_TO_MONITOR=iZuNCnURIQHazG9cIui2B5FdQzWRE8TMa28i6nHr5ic
-      - PORT=3007
-      - SU_URL=https://su-router.ao-testnet.xyz
-      - MESSAGE_POLLING_INTERVAL=10s
-    networks:
-      - aos-network
+      <<: *env-base
+      PROCESS_ID_TO_MONITOR: iZuNCnURIQHazG9cIui2B5FdQzWRE8TMa28i6nHr5ic
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.registry.rule=Query(`process-id=iZuNCnURIQHazG9cIui2B5FdQzWRE8TMa28i6nHr5ic`)
+      - traefik.http.routers.registry.entrypoints=web
+      - traefik.http.services.registry.loadbalancer.server.port=8080
 
   # Token Factory Process
   aos-token-factory:
-    build: .
+    <<: *service-base
+    deploy:
+      replicas: 1
     environment:
-      - PROCESS_ID_TO_MONITOR=mQES2_hwlXQS8JVSdPJvRTkp78slLCl2gpm6sW3CK9w
-      - PORT=3010
-      - SU_URL=https://su-router.ao-testnet.xyz
-      - MESSAGE_POLLING_INTERVAL=10s
-    networks:
-      - aos-network
+      <<: *env-base
+      PROCESS_ID_TO_MONITOR: mQES2_hwlXQS8JVSdPJvRTkp78slLCl2gpm6sW3CK9w
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.token-factory.rule=Query(`process-id=mQES2_hwlXQS8JVSdPJvRTkp78slLCl2gpm6sW3CK9w`)
+      - traefik.http.routers.token-factory.entrypoints=web
+      - traefik.http.services.token-factory.loadbalancer.server.port=8080
 
   # Portfolio Agent Factory Process
   aos-portfolio-agent-factory:
-    build: .
+    <<: *service-base
+    deploy:
+      replicas: 1
     environment:
-      - PROCESS_ID_TO_MONITOR=OF3TuQgd3RkTb9HSs_V94vVPFeRXi1h0EGJhSgda7OI
-      - PORT=3011
-      - SU_URL=https://su-router.ao-testnet.xyz
-      - MESSAGE_POLLING_INTERVAL=10s
-    networks:
-      - aos-network
+      <<: *env-base
+      PROCESS_ID_TO_MONITOR: OF3TuQgd3RkTb9HSs_V94vVPFeRXi1h0EGJhSgda7OI
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.portfolio.rule=Query(`process-id=OF3TuQgd3RkTb9HSs_V94vVPFeRXi1h0EGJhSgda7OI`)
+      - traefik.http.routers.portfolio.entrypoints=web
+      - traefik.http.services.portfolio.loadbalancer.server.port=8080
 
   # FLP Factory Process
   aos-flp-factory:
-    build: .
+    <<: *service-base
+    deploy:
+      replicas: 1
     environment:
-      - PROCESS_ID_TO_MONITOR=It-_AKlEfARBmJdbJew1nG9_hIaZt0t20wQc28mFGBE
-      - PORT=3012
-      - SU_URL=https://su-router.ao-testnet.xyz
-      - MESSAGE_POLLING_INTERVAL=10s
-    networks:
-      - aos-network
+      <<: *env-base
+      PROCESS_ID_TO_MONITOR: It-_AKlEfARBmJdbJew1nG9_hIaZt0t20wQc28mFGBE
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.flp.rule=Query(`process-id=It-_AKlEfARBmJdbJew1nG9_hIaZt0t20wQc28mFGBE`)
+      - traefik.http.routers.flp.entrypoints=web
+      - traefik.http.services.flp.loadbalancer.server.port=8080
 
   # AMM Factory Process
   aos-amm-factory:
-    build: .
+    <<: *service-base
+    deploy:
+      replicas: 1
     environment:
-      - PROCESS_ID_TO_MONITOR=3XBGLrygs11K63F_7mldWz4veNx6Llg6hI2yZs8LKHo
-      - PORT=3013
-      - SU_URL=https://su-router.ao-testnet.xyz
-      - MESSAGE_POLLING_INTERVAL=10s
-    networks:
-      - aos-network
+      <<: *env-base
+      PROCESS_ID_TO_MONITOR: 3XBGLrygs11K63F_7mldWz4veNx6Llg6hI2yZs8LKHo
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.amm.rule=Query(`process-id=3XBGLrygs11K63F_7mldWz4veNx6Llg6hI2yZs8LKHo`)
+      - traefik.http.routers.amm.entrypoints=web
+      - traefik.http.services.amm.loadbalancer.server.port=8080
 
   # Payment Token Process
   aos-payment-token:
-    build: .
+    <<: *service-base
+    deploy:
+      replicas: 1
     environment:
-      - PROCESS_ID_TO_MONITOR=atlyT9ph8ex_TxDDkQ2fdbhVT62sLw6boJPdEr7UqJE
-      - PORT=3014
-      - SU_URL=https://su-router.ao-testnet.xyz
-      - MESSAGE_POLLING_INTERVAL=10s
-    networks:
-      - aos-network
+      <<: *env-base
+      PROCESS_ID_TO_MONITOR: atlyT9ph8ex_TxDDkQ2fdbhVT62sLw6boJPdEr7UqJE
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.payment-token.rule=Query(`process-id=atlyT9ph8ex_TxDDkQ2fdbhVT62sLw6boJPdEr7UqJE`)
+      - traefik.http.routers.payment-token.entrypoints=web
+      - traefik.http.services.payment-token.loadbalancer.server.port=8080
 
   # AO Process
   aos-ao:
-    build: .
-    environment:
-      - PROCESS_ID_TO_MONITOR=0syT13r0s0tgPmIed95bJnuSqaD29HQNN8D3ElLSrsc
-      - PORT=3016
-      - SU_URL=https://su-router.ao-testnet.xyz
-      - MESSAGE_POLLING_INTERVAL=10s
-    networks:
-      - aos-network
+    <<: *service-base
     deploy:
-      replicas: 4
+      replicas: 1
+    environment:
+      <<: *env-base
+      PROCESS_ID_TO_MONITOR: 0syT13r0s0tgPmIed95bJnuSqaD29HQNN8D3ElLSrsc
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.ao.rule=Query(`process-id=0syT13r0s0tgPmIed95bJnuSqaD29HQNN8D3ElLSrsc`)
+      - traefik.http.routers.ao.entrypoints=web
+      - traefik.http.services.ao.loadbalancer.server.port=8080
 
   # Delegation Oracle Process
   aos-delegation-oracle:
-    build: .
-    environment:
-      - PROCESS_ID_TO_MONITOR=cuxSKjGJ-WDB9PzSkVkVVrIBSh3DrYHYz44usQOj5yE
-      - PORT=3017
-      - SU_URL=https://su-router.ao-testnet.xyz
-      - MESSAGE_POLLING_INTERVAL=10s
-    networks:
-      - aos-network
+    <<: *service-base
     deploy:
       replicas: 2
+    environment:
+      <<: *env-base
+      PROCESS_ID_TO_MONITOR: cuxSKjGJ-WDB9PzSkVkVVrIBSh3DrYHYz44usQOj5yE
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.delegation-oracle.rule=Query(`process-id=cuxSKjGJ-WDB9PzSkVkVVrIBSh3DrYHYz44usQOj5yE`)
+      - traefik.http.routers.delegation-oracle.entrypoints=web
+      - traefik.http.services.delegation-oracle.loadbalancer.server.port=8080
+    
+
 
   # Delegation Historian Process
   aos-delegation-historian:
-    build: .
-    environment:
-      - PROCESS_ID_TO_MONITOR=NRP0xtzeV9MHgwLmgD254erUB7mUjMBhBkYkNYkbNEo
-      - PORT=3018
-      - SU_URL=https://su-router.ao-testnet.xyz
-      - MESSAGE_POLLING_INTERVAL=10s
-    networks:
-      - aos-network
+    <<: *service-base
     deploy:
       replicas: 2
+    environment:
+      <<: *env-base
+      PROCESS_ID_TO_MONITOR: NRP0xtzeV9MHgwLmgD254erUB7mUjMBhBkYkNYkbNEo
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.delegation-historian.rule=Query(`process-id=NRP0xtzeV9MHgwLmgD254erUB7mUjMBhBkYkNYkbNEo`)
+      - traefik.http.routers.delegation-historian.entrypoints=web
+      - traefik.http.services.delegation-historian.loadbalancer.server.port=8080
+
 
   # Botega FLP Process
   aos-botega-flp:
-    build: .
-    environment:
-      - PROCESS_ID_TO_MONITOR=UcBPqkaVI7W4I_YMznrt2JUoyc_7TScCdZWOOSBvMSU
-      - PORT=3021
-      - SU_URL=https://su-router.ao-testnet.xyz
-      - MESSAGE_POLLING_INTERVAL=10s
-    networks:
-      - aos-network
+    <<: *service-base
     deploy:
       replicas: 2
+    environment:
+      <<: *env-base
+      PROCESS_ID_TO_MONITOR: UcBPqkaVI7W4I_YMznrt2JUoyc_7TScCdZWOOSBvMSU
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.botega-flp.rule=Query(`process-id=UcBPqkaVI7W4I_YMznrt2JUoyc_7TScCdZWOOSBvMSU`)
+      - traefik.http.routers.botega-flp.entrypoints=web
+      - traefik.http.services.botega-flp.loadbalancer.server.port=8080
 
   # QAR Process
   aos-qar:
-    build: .
+    <<: *service-base
+    deploy:
+      replicas: 1
     environment:
-      - PROCESS_ID_TO_MONITOR=NG-0lVX882MG5nhARrSzyprEK6ejonHpdUmaaMPsHE8
-      - PORT=3019
-      - SU_URL=https://su-router.ao-testnet.xyz
-      - MESSAGE_POLLING_INTERVAL=10s
-    networks:
-      - aos-network
+      <<: *env-base
+      PROCESS_ID_TO_MONITOR: NG-0lVX882MG5nhARrSzyprEK6ejonHpdUmaaMPsHE8
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.qar.rule=Query(`process-id=NG-0lVX882MG5nhARrSzyprEK6ejonHpdUmaaMPsHE8`)
+      - traefik.http.routers.qar.entrypoints=web
+      - traefik.http.services.qar.loadbalancer.server.port=8080
 
   # Wrapped AR Process
   aos-wrapped-ar:
-    build: .
+    <<: *service-base
+    deploy:
+      replicas: 2
     environment:
       - PROCESS_ID_TO_MONITOR=xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
       - PORT=3020
@@ -197,36 +291,59 @@ services:
       - MESSAGE_POLLING_INTERVAL=10s
     networks:
       - aos-network
-    deploy:
-      replicas: 2
 
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "8080:80"
+  # ─── monitoring stack ─────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      - aos-agent-factory
-      - aos-permaweb-index
-      - aos-dexi
-      - aos-token-locker
-      - aos-permaweb-index-token
-      - aos-registry
-      - aos-token-factory
-      - aos-portfolio-agent-factory
-      - aos-flp-factory
-      - aos-amm-factory
-      - aos-payment-token
-      - aos-ao
-      - aos-delegation-oracle
-      - aos-delegation-historian
-      - aos-botega-flp
-      - aos-qar
-      - aos-wrapped-ar
-    networks:
-      - aos-network
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports: ["9090:9090"]
+    networks: [aos-network]
 
-networks:
-  aos-network:
-    driver: bridge
+  grafana:
+    image: grafana/grafana:11.0.0          # latest LTS, May 2025
+    ports: ["3001:3000"]                   # browse → http://localhost:3001
+    environment:
+      GF_SECURITY_ADMIN_USER:   admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+    volumes:
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+    networks: [aos-network]
+
+  # node-exporter
+  node-exporter:
+    image: prom/node-exporter
+    pid: host
+    volumes: [/proc:/host/proc:ro, /sys:/host/sys:ro]
+    command: ["--path.rootfs=/host"]
+    networks: [aos-network]
+
+  # Docker container metrics exporter for Prometheus
+  docker-exporter:
+    image: prometheusnet/docker_exporter:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports: ["9417:9417"]
+    networks: [aos-network]
+    
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    privileged: true                        # needed on Docker-Desktop & SELinux
+    command: 
+      - --housekeeping_interval=10s
+      - --port=8081
+      - --docker_only=true
+      - --store_container_labels=true       # Enable container labels
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro   # ← gives API access
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports: ["8081:8081"]  # Expose cAdvisor UI
+    networks: [aos-network]
+
+networks: { aos-network: {} }
