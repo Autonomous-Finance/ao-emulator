@@ -220,6 +220,78 @@ services:
       - traefik.http.routers.ao.entrypoints=web
       - traefik.http.services.ao.loadbalancer.server.port=8080
 
+  # Delegation Oracle Process
+  aos-delegation-oracle:
+    <<: *service-base
+    deploy:
+      replicas: 2
+    environment:
+      <<: *env-base
+      PROCESS_ID_TO_MONITOR: cuxSKjGJ-WDB9PzSkVkVVrIBSh3DrYHYz44usQOj5yE
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.delegation-oracle.rule=Query(`process-id=cuxSKjGJ-WDB9PzSkVkVVrIBSh3DrYHYz44usQOj5yE`)
+      - traefik.http.routers.delegation-oracle.entrypoints=web
+      - traefik.http.services.delegation-oracle.loadbalancer.server.port=8080
+    
+
+
+  # Delegation Historian Process
+  aos-delegation-historian:
+    <<: *service-base
+    deploy:
+      replicas: 2
+    environment:
+      <<: *env-base
+      PROCESS_ID_TO_MONITOR: NRP0xtzeV9MHgwLmgD254erUB7mUjMBhBkYkNYkbNEo
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.delegation-historian.rule=Query(`process-id=NRP0xtzeV9MHgwLmgD254erUB7mUjMBhBkYkNYkbNEo`)
+      - traefik.http.routers.delegation-historian.entrypoints=web
+      - traefik.http.services.delegation-historian.loadbalancer.server.port=8080
+
+
+  # Botega FLP Process
+  aos-botega-flp:
+    <<: *service-base
+    deploy:
+      replicas: 2
+    environment:
+      <<: *env-base
+      PROCESS_ID_TO_MONITOR: UcBPqkaVI7W4I_YMznrt2JUoyc_7TScCdZWOOSBvMSU
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.botega-flp.rule=Query(`process-id=UcBPqkaVI7W4I_YMznrt2JUoyc_7TScCdZWOOSBvMSU`)
+      - traefik.http.routers.botega-flp.entrypoints=web
+      - traefik.http.services.botega-flp.loadbalancer.server.port=8080
+
+  # QAR Process
+  aos-qar:
+    <<: *service-base
+    deploy:
+      replicas: 1
+    environment:
+      <<: *env-base
+      PROCESS_ID_TO_MONITOR: NG-0lVX882MG5nhARrSzyprEK6ejonHpdUmaaMPsHE8
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.qar.rule=Query(`process-id=NG-0lVX882MG5nhARrSzyprEK6ejonHpdUmaaMPsHE8`)
+      - traefik.http.routers.qar.entrypoints=web
+      - traefik.http.services.qar.loadbalancer.server.port=8080
+
+  # Wrapped AR Process
+  aos-wrapped-ar:
+    <<: *service-base
+    deploy:
+      replicas: 2
+    environment:
+      - PROCESS_ID_TO_MONITOR=xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
+      - PORT=3020
+      - SU_URL=https://su-router.ao-testnet.xyz
+      - MESSAGE_POLLING_INTERVAL=10s
+    networks:
+      - aos-network
+
   # ─── monitoring stack ─────────────────────────────────────────────
   prometheus:
     image: prom/prometheus
