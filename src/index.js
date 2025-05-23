@@ -77,6 +77,37 @@ export async function aoslocal(aosmodule = LATEST, env, loaderOptions = {}) {
     .then(res => res.json())
     .then(result => result.aos[aosmodule] || aosmodule)
 
+  // Fetch module format from gateway
+  const moduleInfo = await fetch('https://arweave.net/graphql', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      query: `{
+        transactions(
+          ids: ["${mod}"]
+        ) {
+          edges {
+            node {
+              tags {
+                name
+                value
+              }
+            }
+          }
+        }
+      }`
+    })
+  }).then(res => res.json())
+    .then(result => result.data.transactions.edges[0]?.node)
+
+  // Extract Module-Format from tags
+  const moduleFormat = moduleInfo?.tags.find(tag => tag.name === 'Module-Format')?.value || 'wasm64-unknown-emscripten-draft_2024_02_15'
+
+  // Update WASM64 format with the fetched module format
+  aoLoaderActualOptions.format = moduleFormat
+
   const binary = await fetch('https://arweave.net/' + mod).then(res => res.blob()).then(blob => blob.arrayBuffer())
 
   aosHandle = await AoLoader(binary, aoLoaderActualOptions)

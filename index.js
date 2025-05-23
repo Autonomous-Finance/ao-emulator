@@ -190,6 +190,20 @@ async function fetchAndProcessMessages(fromNonceOverride) {
                     // console.log(`[fetchAndProcessMessages] aos.send() result:`, r);
                     lastProcessedNonce = messageToSend.Nonce; // Update nonce only after successful send
                     console.log(`[fetchAndProcessMessages] Successfully processed message ID: ${messageToSend.Id}. New lastProcessedNonce: ${lastProcessedNonce}`);
+
+                    // Print result of the last message when nonce limit is reached
+                    if (FORWARD_TO_NONCE_LIMIT !== null && lastProcessedNonce >= FORWARD_TO_NONCE_LIMIT) {
+                        console.log('\n-------------------------------------------------------');
+                        console.log('LAST MESSAGE RESULT (Nonce Limit Reached):');
+                        console.log('-------------------------------------------------------');
+                        console.log('Message Details:');
+                        console.log(`  ID: ${messageToSend.Id}`);
+                        console.log(`  Nonce: ${messageToSend.Nonce}`);
+                        console.log(`  Target: ${messageToSend.Target}`);
+                        console.log('\nResult:');
+                        console.log(JSON.stringify(r, null, 2));
+                        console.log('-------------------------------------------------------\n');
+                    }
                 } catch (sendError) {
                     console.error(`[fetchAndProcessMessages] Error sending message ID ${messageToSend.Id} (Nonce: ${messageToSend.Nonce}) to aos.send:`, sendError);
                     console.error('[fetchAndProcessMessages] Stopping further message processing in this batch to maintain order.');
@@ -260,6 +274,79 @@ async function initialLoadAndCatchup() {
             lastProcessedNonce = -1;
             loadedSuccessfully = true;
             console.log(`[initialLoadAndCatchup] Module ready. lastProcessedNonce set to ${lastProcessedNonce} to fetch all available messages from SU.`);
+        } else if (LOAD_FROM_CHECKPOINT || wasExplicitCheckpointRequested) {
+            // Skip live state load and go straight to checkpoint loading
+            console.log('[initialLoadAndCatchup] LOAD_FROM_CHECKPOINT is true or explicit checkpoint requested. Skipping live state load.');
+
+            if (wasExplicitCheckpointRequested) {
+                console.log(`[initialLoadAndCatchup] Explicit CHECKPOINT_TX_ID (${CHECKPOINT_TX_ID}) provided. This will be attempted.`);
+                checkpointToLoadTxId = CHECKPOINT_TX_ID;
+            } else {
+                console.log('[initialLoadAndCatchup] LOAD_FROM_CHECKPOINT is true. Attempting to find a suitable checkpoint automatically.');
+                try {
+                    let checkpointNode = null;
+                    if (FORWARD_TO_NONCE_LIMIT !== null) {
+                        console.log(`[initialLoadAndCatchup] FORWARD_TO_NONCE_LIMIT is set to ${FORWARD_TO_NONCE_LIMIT}. Searching for a checkpoint <= this nonce.`);
+                        checkpointNode = await findCheckpointBeforeOrEqualToNonce(PROCESS_ID_TO_MONITOR, FORWARD_TO_NONCE_LIMIT);
+                        if (checkpointNode) {
+                            console.log(`[initialLoadAndCatchup] Found checkpoint ID ${checkpointNode.id} (Nonce: ${checkpointNode.tags.find(t => t.name === 'Nonce' || t.name === 'Ordinate')?.value}) suitable for nonce limit.`);
+                        } else {
+                            console.warn(`[initialLoadAndCatchup] No checkpoint found for ${PROCESS_ID_TO_MONITOR} with nonce <= ${FORWARD_TO_NONCE_LIMIT}.`);
+                        }
+                    } else {
+                        console.log('[initialLoadAndCatchup] Fetching the latest checkpoint for the process.');
+                        checkpointNode = await getCheckpointTx(PROCESS_ID_TO_MONITOR);
+                        if (checkpointNode) {
+                            console.log(`[initialLoadAndCatchup] Found latest checkpoint ID ${checkpointNode.id} (Nonce: ${checkpointNode.tags.find(t => t.name === 'Nonce' || t.name === 'Ordinate')?.value}).`);
+                        }
+                    }
+
+                    if (checkpointNode && checkpointNode.id) {
+                        checkpointToLoadTxId = checkpointNode.id;
+                    } else {
+                        console.warn(`[initialLoadAndCatchup] Could not automatically determine a checkpoint TX ID for ${PROCESS_ID_TO_MONITOR}. Checkpoint loading will be skipped.`);
+                    }
+                } catch (findError) {
+                    console.error('[initialLoadAndCatchup] Error while trying to find a suitable checkpoint TX ID:', findError);
+                }
+            }
+
+            // Attempt to load checkpoint if one was identified
+            if (checkpointToLoadTxId) {
+                console.log(`[initialLoadAndCatchup] Attempting to prepare and load from checkpoint TX ID: ${checkpointToLoadTxId}`);
+                try {
+                    const prepResult = await prepareSpecificCheckpoint(PROCESS_ID_TO_MONITOR, checkpointToLoadTxId);
+
+                    if (prepResult.success) {
+                        console.log(`[initialLoadAndCatchup] Checkpoint ${checkpointToLoadTxId} successfully prepared. File: ${prepResult.preparedFilePath}. Nonce: ${prepResult.nonce}.`);
+                        console.log(`[initialLoadAndCatchup] Calling aos.fromCheckpoint(${checkpointToLoadTxId}) to load the prepared checkpoint state into AOS memory.`);
+                        const loadResult = await aos.fromCheckpoint(checkpointToLoadTxId);
+                        console.log('[initialLoadAndCatchup] aos.fromCheckpoint() result after preparing checkpoint:', loadResult);
+                        loadedSuccessfully = true;
+
+                        if (prepResult.nonce !== null) {
+                            console.log(`[initialLoadAndCatchup] Updating lastProcessedNonce from prepared checkpoint: ${prepResult.nonce}.`);
+                            lastProcessedNonce = prepResult.nonce;
+                        } else {
+                            console.warn('[initialLoadAndCatchup] Nonce not available from prepared checkpoint metadata. lastProcessedNonce not updated from checkpoint meta, remains', lastProcessedNonce);
+                        }
+                    } else {
+                        console.error(`[initialLoadAndCatchup] Failed to prepare checkpoint ${checkpointToLoadTxId}: ${prepResult.error}`);
+                        if (wasExplicitCheckpointRequested) {
+                            console.error(`[initialLoadAndCatchup] CRITICAL: The explicitly requested checkpoint TX ID ${CHECKPOINT_TX_ID} could not be prepared. Halting initial load.`);
+                            isPerformingFullLoad = false;
+                            return;
+                        }
+                    }
+                } catch (prepLoadError) {
+                    console.error(`[initialLoadAndCatchup] Critical error during preparation or loading of checkpoint TX ID ${checkpointToLoadTxId}:`, prepLoadError);
+                    if (wasExplicitCheckpointRequested) {
+                        console.error(`[initialLoadAndCatchup] CRITICAL: The explicitly requested checkpoint TX ID ${CHECKPOINT_TX_ID} failed during load process. Halting initial load.`);
+                        isPerformingFullLoad = false;
+                        return;
+                    }
+                }
+            }
         } else {
             // First try to load from live state by default
             console.log('[initialLoadAndCatchup] Attempting to load latest state via live state download...');
@@ -547,13 +634,11 @@ async function initializeAndPrepareAos() {
 
         await initialLoadAndCatchup();
 
-        if (!CHECKPOINT_TX_ID) {
+        if (!CHECKPOINT_TX_ID && !LOAD_FROM_SCRATCH && !LOAD_FROM_CHECKPOINT && !FORWARD_TO_NONCE_LIMIT) {
             console.log(`[initializeAndPrepareAos] Periodic full state load interval will be set (if uncommented below). CHECKPOINT_TX_ID is not set.`);
-            // setInterval(performPeriodicFullLoad, applyJitter(FULL_STATE_REFRESH_INTERVAL_MS));
+            setInterval(performPeriodicFullLoad, applyJitter(FULL_STATE_REFRESH_INTERVAL_MS));
         } else {
-            console.log(`[initializeAndPrepareAos] Periodic full state load will NOT be set (even if uncommented below) because a specific CHECKPOINT_TX_ID (${CHECKPOINT_TX_ID}) was provided.`);
-            // If the line was uncommented, it would be here, but still effectively disabled by the 'else' block.
-            // setInterval(performPeriodicFullLoad, applyJitter(FULL_STATE_REFRESH_INTERVAL_MS));
+            console.log(`[initializeAndPrepareAos] Periodic full state load will NOT be set`);
         }
 
         const jitteredMessagePollInterval = applyJitter(MESSAGE_POLL_INTERVAL_MS);
@@ -638,7 +723,7 @@ app.post('/dry-run', async (req, res) => {
     const queryProcessId = req.query['process-id'];
 
     console.log(`Received /dry-run request for query process-id: ${queryProcessId || 'Not Provided'}`);
-    console.log('Original message:', JSON.stringify(message, null, 2));
+    // console.log('Original message:', JSON.stringify(message, null, 2));
 
     if (typeof message !== 'object' || message === null || !message.Target || !message.Tags) {
         return res.status(400).json({ error: 'Invalid or incomplete message object in request body. \'Target\' and \'Tags\' are required.' });
@@ -653,16 +738,16 @@ app.post('/dry-run', async (req, res) => {
     try {
         // Create a new message object with flattened tags
         const processedMessage = flattenMessageTags(message);
-        console.log('Processed message after flattening:', JSON.stringify(processedMessage, null, 2));
+        // console.log('Processed message after flattening:', JSON.stringify(processedMessage, null, 2));
 
         console.log('sending message to aos.send...');
         const startTime = Date.now();
-        console.log('message:', processedMessage);
+        // console.log('message:', processedMessage);
         const result = await aos.send(processedMessage, globalProcessEnv, false);
         const duration = Date.now() - startTime;
         console.log(`Dry-run for message to ${message.Target} completed in ${duration}ms.`);
 
-        console.log('Result:', JSON.stringify(result, null, 2));
+        // console.log('Result:', JSON.stringify(result, null, 2));
         // Create a response payload excluding the Memory field
         const responsePayload = {
             Output: result.Output,
