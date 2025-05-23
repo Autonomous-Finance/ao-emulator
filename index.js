@@ -725,7 +725,7 @@ app.post('/dry-run', async (req, res) => {
     const queryProcessId = req.query['process-id'];
 
     console.log(`Received /dry-run request for query process-id: ${queryProcessId || 'Not Provided'}`);
-    console.log('Original message:', JSON.stringify(message, null, 2));
+    // console.log('Original message:', JSON.stringify(message, null, 2));
 
     if (typeof message !== 'object' || message === null || !message.Target || !message.Tags) {
         return res.status(400).json({ error: 'Invalid or incomplete message object in request body. \'Target\' and \'Tags\' are required.' });
@@ -740,16 +740,16 @@ app.post('/dry-run', async (req, res) => {
     try {
         // Create a new message object with flattened tags
         const processedMessage = flattenMessageTags(message);
-        console.log('Processed message after flattening:', JSON.stringify(processedMessage, null, 2));
+        // console.log('Processed message after flattening:', JSON.stringify(processedMessage, null, 2));
 
         console.log('sending message to aos.send...');
         const startTime = Date.now();
-        console.log('message:', processedMessage);
+        // console.log('message:', processedMessage);
         const result = await aos.send(processedMessage, globalProcessEnv, false);
         const duration = Date.now() - startTime;
         console.log(`Dry-run for message to ${message.Target} completed in ${duration}ms.`);
 
-        console.log('Result:', JSON.stringify(result, null, 2));
+        // console.log('Result:', JSON.stringify(result, null, 2));
         // Create a response payload excluding the Memory field
         const responsePayload = {
             Output: result.Output,
