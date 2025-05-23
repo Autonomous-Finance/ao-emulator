@@ -1,0 +1,47 @@
+meta {
+  name: /dry-run Get-Overview
+  type: http
+  seq: 1
+}
+
+post {
+  url: http://localhost/dry-run?process-id=Meb6GwY5I9QN77F0c5Ku2GpCFxtYyG1mfJus2GWYtII
+  body: json
+  auth: inherit
+}
+
+params:query {
+  process-id: Meb6GwY5I9QN77F0c5Ku2GpCFxtYyG1mfJus2GWYtII
+}
+
+body:json {
+  {
+    "Id": "1234",
+    "Target": "Meb6GwY5I9QN77F0c5Ku2GpCFxtYyG1mfJus2GWYtII",
+    "Owner": "1234",
+    "Anchor": "0",
+    "Data": "1234",
+    "Tags": [
+      {
+        "name": "Action",
+        "value": "Get-Overview"
+      },
+      {
+        "name": "Min-Volume",
+        "value": "1"
+      },
+      {
+        "name": "Data-Protocol",
+        "value": "ao"
+      },
+      {
+        "name": "Type",
+        "value": "Message"
+      },
+      {
+        "name": "Variant",
+        "value": "ao.TN.1"
+      }
+    ]
+  }
+}

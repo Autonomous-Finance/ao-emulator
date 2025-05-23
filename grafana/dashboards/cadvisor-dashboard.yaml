@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  - name: 'cAdvisor'
+    orgId: 1
+    folder: 'Docker'
+    folderUid: docker
+    type: file
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/cAdvisor

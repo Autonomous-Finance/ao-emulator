@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "Dexi",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}
