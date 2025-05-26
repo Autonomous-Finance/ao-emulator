@@ -329,7 +329,7 @@ services:
 
   grafana:
     image: grafana/grafana:11.0.0 # latest LTS, May 2025
-    ports: [ "3001:3000" ] # browse → http://localhost:3001
+    ports: [ "3005:3000" ] # browse → http://localhost:3005
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
