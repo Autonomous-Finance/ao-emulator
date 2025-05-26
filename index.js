@@ -148,14 +148,14 @@ async function fetchAndProcessMessages(fromNonceOverride) {
         return;
     }
 
-    const effectiveFromNonce = typeof fromNonceOverride === 'number' ? fromNonceOverride : lastProcessedNonce + 1;
+    const effectiveFromNonce = typeof fromNonceOverride === 'number' ? fromNonceOverride : lastProcessedNonce;
 
     if (effectiveFromNonce < 0) { // Ensure nonce is non-negative, common if lastProcessedNonce is -1
         console.warn(`[fetchAndProcessMessages] Corrected fromNonce from ${effectiveFromNonce} to 0.`);
         // effectiveFromNonce = 0; // SU likely expects nonces >= 0 or 1. Let's assume su.js handles 0 or 1 appropriately.
     }
 
-    console.log(`[fetchAndProcessMessages] Attempting to fetch messages for ${PROCESS_ID_TO_MONITOR} from SU (${SU_URL}) starting after nonce ${lastProcessedNonce} (i.e., fromNonce ${effectiveFromNonce}).`);
+    console.log(`[fetchAndProcessMessages] Fetching messages for ${PROCESS_ID_TO_MONITOR}. lastProcessedNonce: ${lastProcessedNonce}. Querying SU (${SU_URL}) with fromNonce: ${effectiveFromNonce}.`);
 
     try {
         const messagesContext = {

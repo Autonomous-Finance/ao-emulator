@@ -37,6 +37,10 @@ The service can be configured through environment variables or command-line argu
 - `LOAD_FROM_SCRATCH`: Start from scratch without loading state (default: false)
 - `FORWARD_TO_NONCE_LIMIT`: Process messages up to a specific nonce, it will try to fetch the closest checkpoint to the nonce and process messages up to that nonce.
 
+### Caveats
+When ran with unsafe memory, the service purely relies on the WASM module to prevent state changes. This works by hard-coding every sender to DRY-RUN. If a handler still modifies state without checking the sender, the state on the local cu will diverge from the actual state.
+You can somewhat mitigate this by the FULL_STATE_REFRESH_INTERVAL_MS which will reload the authoritive state from the network.
+
 ## Usage Examples
 
 ### Basic Usage
