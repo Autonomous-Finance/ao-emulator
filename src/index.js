@@ -46,9 +46,6 @@ export let LATEST = "module"
 let aosHandle = null
 let memory = null
 
-// This map will store the named memory snapshots
-let memorySnapshots = {};
-
 /**
  * @param {string} aosmodule - module label or txId to wasm binary
  * @param {object} [env] - The environment object.

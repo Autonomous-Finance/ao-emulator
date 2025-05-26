@@ -2,8 +2,8 @@ version: '3.8'
 
 x-service-base: &service-base
   build: .
-  expose: ["8080"]
-  networks: [aos-network]
+  expose: [ "8080" ]
+  networks: [ aos-network ]
 
 x-env-base: &env-base
   SU_URL: https://su-router.ao-testnet.xyz
@@ -15,25 +15,25 @@ services:
     image: traefik:v3.4
     command:
       # ────────── core ──────────
-      - --log.level=INFO              # keep DEBUG for trouble-shooting only
+      - --log.level=INFO # keep DEBUG for trouble-shooting only
       - --providers.docker=true
       - --providers.docker.exposedByDefault=false
 
       # ────────── entry-points ─────
       - --entrypoints.web.address=:80
-      - --entrypoints.metrics.address=:9100   # ← Prometheus will scrape here
+      - --entrypoints.metrics.address=:9100 # ← Prometheus will scrape here
 
       # ────────── dashboard / api ─
       - --api.dashboard=true
-      - --api.debug=true                    # adds /api/rawdata
+      - --api.debug=true # adds /api/rawdata
 
       # ────────── ACCESS LOG ───────
-      - --accesslog=true                    # turn it on :contentReference[oaicite:0]{index=0}
-      - --accesslog.format=json             # easier to ship to Loki/ELK
-      - --accesslog.addinternals=true       # include dashboard, ping, etc.
+      - --accesslog=true # turn it on :contentReference[oaicite:0]{index=0}
+      - --accesslog.format=json # easier to ship to Loki/ELK
+      - --accesslog.addinternals=true # include dashboard, ping, etc.
 
       # ────────── METRICS (Prom) ───
-      - --metrics.prometheus=true           # exporter on the chosen EP :contentReference[oaicite:1]{index=1}
+      - --metrics.prometheus=true # exporter on the chosen EP :contentReference[oaicite:1]{index=1}
       - --metrics.prometheus.entrypoint=metrics
       - --metrics.prometheus.addrouterslabels=true
       - --metrics.prometheus.addserviceslabels=true
@@ -42,11 +42,11 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     labels:
-    - traefik.enable=true
-    - traefik.http.routers.tkd.rule=Host(`traefik.localhost`)
-    - traefik.http.routers.tkd.entrypoints=web           # or websecure
-    - traefik.http.routers.tkd.service=api@internal
-    networks: [aos-network]
+      - traefik.enable=true
+      - traefik.http.routers.tkd.rule=Host(`traefik.localhost`)
+      - traefik.http.routers.tkd.entrypoints=web # or websecure
+      - traefik.http.routers.tkd.service=api@internal
+    networks: [ aos-network ]
 
   # Agent Factory Process
   aos-agent-factory:
@@ -92,7 +92,6 @@ services:
       # fallback:
       - traefik.http.routers.dexi-default.rule=PathPrefix(`/`)
       - traefik.http.routers.dexi-default.priority=1
-
 
   #Token Locker Process
   aos-token-locker:
@@ -233,8 +232,6 @@ services:
       - traefik.http.routers.delegation-oracle.rule=Query(`process-id=cuxSKjGJ-WDB9PzSkVkVVrIBSh3DrYHYz44usQOj5yE`)
       - traefik.http.routers.delegation-oracle.entrypoints=web
       - traefik.http.services.delegation-oracle.loadbalancer.server.port=8080
-    
-
 
   # Delegation Historian Process
   aos-delegation-historian:
@@ -249,7 +246,6 @@ services:
       - traefik.http.routers.delegation-historian.rule=Query(`process-id=NRP0xtzeV9MHgwLmgD254erUB7mUjMBhBkYkNYkbNEo`)
       - traefik.http.routers.delegation-historian.entrypoints=web
       - traefik.http.services.delegation-historian.loadbalancer.server.port=8080
-
 
   # Botega FLP Process
   aos-botega-flp:
@@ -285,12 +281,41 @@ services:
     deploy:
       replicas: 2
     environment:
-      - PROCESS_ID_TO_MONITOR=xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
-      - PORT=3020
-      - SU_URL=https://su-router.ao-testnet.xyz
-      - MESSAGE_POLLING_INTERVAL=10s
-    networks:
-      - aos-network
+      <<: *env-base
+      PROCESS_ID_TO_MONITOR: xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.wrapped-ar.rule=Query(`process-id=xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10`)
+      - traefik.http.routers.wrapped-ar.entrypoints=web
+      - traefik.http.services.wrapped-ar.loadbalancer.server.port=8080
+
+  # AO/wAR Microdexi Process
+  aos-ao-war-microdexi:
+    <<: *service-base
+    deploy:
+      replicas: 1
+    environment:
+      <<: *env-base
+      PROCESS_ID_TO_MONITOR: oHpt06fqA4lmQsdpYGQMoKJjUehipa2AeS7LndqBVE8
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.ao-war-microdexi.rule=Query(`process-id=oHpt06fqA4lmQsdpYGQMoKJjUehipa2AeS7LndqBVE8`)
+      - traefik.http.routers.ao-war-microdexi.entrypoints=web
+      - traefik.http.services.ao-war-microdexi.loadbalancer.server.port=8080
+
+  # AO/USDC Microdexi Process
+  aos-ao-usdc-microdexi:
+    <<: *service-base
+    deploy:
+      replicas: 1
+    environment:
+      <<: *env-base
+      PROCESS_ID_TO_MONITOR: i56hyWOmM4yvqoVFCp6Ca7a7f8KCnQq68L_WWvpU29k
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.ao-usdc-microdexi.rule=Query(`process-id=i56hyWOmM4yvqoVFCp6Ca7a7f8KCnQq68L_WWvpU29k`)
+      - traefik.http.routers.ao-usdc-microdexi.entrypoints=web
+      - traefik.http.services.ao-usdc-microdexi.loadbalancer.server.port=8080
 
   # ─── monitoring stack ─────────────────────────────────────────────
   prometheus:
@@ -299,51 +324,51 @@ services:
       - --config.file=/etc/prometheus/prometheus.yml
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    ports: ["9090:9090"]
-    networks: [aos-network]
+    ports: [ "9090:9090" ]
+    networks: [ aos-network ]
 
   grafana:
-    image: grafana/grafana:11.0.0          # latest LTS, May 2025
-    ports: ["3001:3000"]                   # browse → http://localhost:3001
+    image: grafana/grafana:11.0.0 # latest LTS, May 2025
+    ports: [ "3001:3000" ] # browse → http://localhost:3001
     environment:
-      GF_SECURITY_ADMIN_USER:   admin
+      GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
       GF_INSTALL_PLUGINS: grafana-piechart-panel
     volumes:
       - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
       - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
-    networks: [aos-network]
+    networks: [ aos-network ]
 
   # node-exporter
   node-exporter:
     image: prom/node-exporter
     pid: host
-    volumes: [/proc:/host/proc:ro, /sys:/host/sys:ro]
-    command: ["--path.rootfs=/host"]
-    networks: [aos-network]
+    volumes: [ /proc:/host/proc:ro, /sys:/host/sys:ro ]
+    command: [ "--path.rootfs=/host" ]
+    networks: [ aos-network ]
 
   # Docker container metrics exporter for Prometheus
   docker-exporter:
     image: prometheusnet/docker_exporter:latest
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    ports: ["9417:9417"]
-    networks: [aos-network]
-    
+    ports: [ "9417:9417" ]
+    networks: [ aos-network ]
+
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.49.1
-    privileged: true                        # needed on Docker-Desktop & SELinux
-    command: 
+    privileged: true # needed on Docker-Desktop & SELinux
+    command:
       - --housekeeping_interval=10s
       - --port=8081
       - --docker_only=true
-      - --store_container_labels=true       # Enable container labels
+      - --store_container_labels=true # Enable container labels
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro   # ← gives API access
+      - /var/run/docker.sock:/var/run/docker.sock:ro # ← gives API access
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
-    ports: ["8081:8081"]  # Expose cAdvisor UI
-    networks: [aos-network]
+    ports: [ "8081:8081" ] # Expose cAdvisor UI
+    networks: [ aos-network ]
 
 networks: { aos-network: {} }
