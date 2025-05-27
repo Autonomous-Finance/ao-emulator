@@ -58,7 +58,7 @@ services:
       PROCESS_ID_TO_MONITOR: x_WysdFwKD_buywRK9qLA7IexdlsvVTVq6ESWMRCzFY
     labels:
       - traefik.enable=true
-      - traefik.http.routers.agent.rule=Query(`process-id=x_WysdFwKD_buywRK9qLA7IexdlsvVTVq6ESWMRCzFY`)
+      - traefik.http.routers.agent.rule=Query(`process-id`,`x_WysdFwKD_buywRK9qLA7IexdlsvVTVq6ESWMRCzFY`)
       - traefik.http.routers.agent.entrypoints=web
       - traefik.http.services.agent.loadbalancer.server.port=8080
 
@@ -72,7 +72,7 @@ services:
       PROCESS_ID_TO_MONITOR: rxxU4g-7tUHGvF28W2l53hxarpbaFR4NaSnOaxx6MIE
     labels:
       - traefik.enable=true
-      - traefik.http.routers.permaweb.rule=Query(`process-id=rxxU4g-7tUHGvF28W2l53hxarpbaFR4NaSnOaxx6MIE`)
+      - traefik.http.routers.permaweb.rule=Query(`process-id`,`rxxU4g-7tUHGvF28W2l53hxarpbaFR4NaSnOaxx6MIE`)
       - traefik.http.routers.permaweb.entrypoints=web
       - traefik.http.services.permaweb.loadbalancer.server.port=8080
 
@@ -86,7 +86,7 @@ services:
       PROCESS_ID_TO_MONITOR: Meb6GwY5I9QN77F0c5Ku2GpCFxtYyG1mfJus2GWYtII
     labels:
       - traefik.enable=true
-      - traefik.http.routers.dexi.rule=Query(`process-id=Meb6GwY5I9QN77F0c5Ku2GpCFxtYyG1mfJus2GWYtII`)
+      - traefik.http.routers.dexi.rule=Query(`process-id`,`Meb6GwY5I9QN77F0c5Ku2GpCFxtYyG1mfJus2GWYtII`)
       - traefik.http.routers.dexi.entrypoints=web
       - traefik.http.services.dexi.loadbalancer.server.port=8080
       # fallback:
@@ -103,7 +103,7 @@ services:
       PROCESS_ID_TO_MONITOR: jxiKuu_21_KjNga8KxH1h8fJeoCl9DzcEjGBiKN66DY
     labels:
       - traefik.enable=true
-      - traefik.http.routers.token-locker.rule=Query(`process-id=jxiKuu_21_KjNga8KxH1h8fJeoCl9DzcEjGBiKN66DY`)
+      - traefik.http.routers.token-locker.rule=Query(`process-id`,`jxiKuu_21_KjNga8KxH1h8fJeoCl9DzcEjGBiKN66DY`)
       - traefik.http.routers.token-locker.entrypoints=web
       - traefik.http.services.token-locker.loadbalancer.server.port=8080
 
@@ -117,7 +117,7 @@ services:
       PROCESS_ID_TO_MONITOR: 4hXj_E-5fAKmo4E8KjgQvuDJKAFk9P2grhycVmISDLs
     labels:
       - traefik.enable=true
-      - traefik.http.routers.permaweb-token.rule=Query(`process-id=4hXj_E-5fAKmo4E8KjgQvuDJKAFk9P2grhycVmISDLs`)
+      - traefik.http.routers.permaweb-token.rule=Query(`process-id`,`4hXj_E-5fAKmo4E8KjgQvuDJKAFk9P2grhycVmISDLs`)
       - traefik.http.routers.permaweb-token.entrypoints=web
       - traefik.http.services.permaweb-token.loadbalancer.server.port=8080
 
@@ -131,7 +131,7 @@ services:
       PROCESS_ID_TO_MONITOR: iZuNCnURIQHazG9cIui2B5FdQzWRE8TMa28i6nHr5ic
     labels:
       - traefik.enable=true
-      - traefik.http.routers.registry.rule=Query(`process-id=iZuNCnURIQHazG9cIui2B5FdQzWRE8TMa28i6nHr5ic`)
+      - traefik.http.routers.registry.rule=Query(`process-id`,`iZuNCnURIQHazG9cIui2B5FdQzWRE8TMa28i6nHr5ic`)
       - traefik.http.routers.registry.entrypoints=web
       - traefik.http.services.registry.loadbalancer.server.port=8080
 
@@ -145,7 +145,7 @@ services:
       PROCESS_ID_TO_MONITOR: mQES2_hwlXQS8JVSdPJvRTkp78slLCl2gpm6sW3CK9w
     labels:
       - traefik.enable=true
-      - traefik.http.routers.token-factory.rule=Query(`process-id=mQES2_hwlXQS8JVSdPJvRTkp78slLCl2gpm6sW3CK9w`)
+      - traefik.http.routers.token-factory.rule=Query(`process-id`,`mQES2_hwlXQS8JVSdPJvRTkp78slLCl2gpm6sW3CK9w`)
       - traefik.http.routers.token-factory.entrypoints=web
       - traefik.http.services.token-factory.loadbalancer.server.port=8080
 
@@ -159,7 +159,7 @@ services:
       PROCESS_ID_TO_MONITOR: OF3TuQgd3RkTb9HSs_V94vVPFeRXi1h0EGJhSgda7OI
     labels:
       - traefik.enable=true
-      - traefik.http.routers.portfolio.rule=Query(`process-id=OF3TuQgd3RkTb9HSs_V94vVPFeRXi1h0EGJhSgda7OI`)
+      - traefik.http.routers.portfolio.rule=Query(`process-id`,`OF3TuQgd3RkTb9HSs_V94vVPFeRXi1h0EGJhSgda7OI`)
       - traefik.http.routers.portfolio.entrypoints=web
       - traefik.http.services.portfolio.loadbalancer.server.port=8080
 
@@ -173,7 +173,7 @@ services:
       PROCESS_ID_TO_MONITOR: It-_AKlEfARBmJdbJew1nG9_hIaZt0t20wQc28mFGBE
     labels:
       - traefik.enable=true
-      - traefik.http.routers.flp.rule=Query(`process-id=It-_AKlEfARBmJdbJew1nG9_hIaZt0t20wQc28mFGBE`)
+      - traefik.http.routers.flp.rule=Query(`process-id`,`It-_AKlEfARBmJdbJew1nG9_hIaZt0t20wQc28mFGBE`)
       - traefik.http.routers.flp.entrypoints=web
       - traefik.http.services.flp.loadbalancer.server.port=8080
 
@@ -187,7 +187,7 @@ services:
       PROCESS_ID_TO_MONITOR: 3XBGLrygs11K63F_7mldWz4veNx6Llg6hI2yZs8LKHo
     labels:
       - traefik.enable=true
-      - traefik.http.routers.amm.rule=Query(`process-id=3XBGLrygs11K63F_7mldWz4veNx6Llg6hI2yZs8LKHo`)
+      - traefik.http.routers.amm.rule=Query(`process-id`,`3XBGLrygs11K63F_7mldWz4veNx6Llg6hI2yZs8LKHo`)
       - traefik.http.routers.amm.entrypoints=web
       - traefik.http.services.amm.loadbalancer.server.port=8080
 
@@ -201,7 +201,7 @@ services:
       PROCESS_ID_TO_MONITOR: atlyT9ph8ex_TxDDkQ2fdbhVT62sLw6boJPdEr7UqJE
     labels:
       - traefik.enable=true
-      - traefik.http.routers.payment-token.rule=Query(`process-id=atlyT9ph8ex_TxDDkQ2fdbhVT62sLw6boJPdEr7UqJE`)
+      - traefik.http.routers.payment-token.rule=Query(`process-id`,`atlyT9ph8ex_TxDDkQ2fdbhVT62sLw6boJPdEr7UqJE`)
       - traefik.http.routers.payment-token.entrypoints=web
       - traefik.http.services.payment-token.loadbalancer.server.port=8080
 
@@ -215,7 +215,7 @@ services:
       PROCESS_ID_TO_MONITOR: 0syT13r0s0tgPmIed95bJnuSqaD29HQNN8D3ElLSrsc
     labels:
       - traefik.enable=true
-      - traefik.http.routers.ao.rule=Query(`process-id=0syT13r0s0tgPmIed95bJnuSqaD29HQNN8D3ElLSrsc`)
+      - traefik.http.routers.ao.rule=Query(`process-id`,`0syT13r0s0tgPmIed95bJnuSqaD29HQNN8D3ElLSrsc`)
       - traefik.http.routers.ao.entrypoints=web
       - traefik.http.services.ao.loadbalancer.server.port=8080
 
@@ -229,7 +229,7 @@ services:
       PROCESS_ID_TO_MONITOR: cuxSKjGJ-WDB9PzSkVkVVrIBSh3DrYHYz44usQOj5yE
     labels:
       - traefik.enable=true
-      - traefik.http.routers.delegation-oracle.rule=Query(`process-id=cuxSKjGJ-WDB9PzSkVkVVrIBSh3DrYHYz44usQOj5yE`)
+      - traefik.http.routers.delegation-oracle.rule=Query(`process-id`,`cuxSKjGJ-WDB9PzSkVkVVrIBSh3DrYHYz44usQOj5yE`)
       - traefik.http.routers.delegation-oracle.entrypoints=web
       - traefik.http.services.delegation-oracle.loadbalancer.server.port=8080
 
@@ -243,7 +243,7 @@ services:
       PROCESS_ID_TO_MONITOR: NRP0xtzeV9MHgwLmgD254erUB7mUjMBhBkYkNYkbNEo
     labels:
       - traefik.enable=true
-      - traefik.http.routers.delegation-historian.rule=Query(`process-id=NRP0xtzeV9MHgwLmgD254erUB7mUjMBhBkYkNYkbNEo`)
+      - traefik.http.routers.delegation-historian.rule=Query(`process-id`,`NRP0xtzeV9MHgwLmgD254erUB7mUjMBhBkYkNYkbNEo`)
       - traefik.http.routers.delegation-historian.entrypoints=web
       - traefik.http.services.delegation-historian.loadbalancer.server.port=8080
 
@@ -257,7 +257,7 @@ services:
       PROCESS_ID_TO_MONITOR: UcBPqkaVI7W4I_YMznrt2JUoyc_7TScCdZWOOSBvMSU
     labels:
       - traefik.enable=true
-      - traefik.http.routers.botega-flp.rule=Query(`process-id=UcBPqkaVI7W4I_YMznrt2JUoyc_7TScCdZWOOSBvMSU`)
+      - traefik.http.routers.botega-flp.rule=Query(`process-id`,`UcBPqkaVI7W4I_YMznrt2JUoyc_7TScCdZWOOSBvMSU`)
       - traefik.http.routers.botega-flp.entrypoints=web
       - traefik.http.services.botega-flp.loadbalancer.server.port=8080
 
@@ -271,7 +271,7 @@ services:
       PROCESS_ID_TO_MONITOR: NG-0lVX882MG5nhARrSzyprEK6ejonHpdUmaaMPsHE8
     labels:
       - traefik.enable=true
-      - traefik.http.routers.qar.rule=Query(`process-id=NG-0lVX882MG5nhARrSzyprEK6ejonHpdUmaaMPsHE8`)
+      - traefik.http.routers.qar.rule=Query(`process-id`,`NG-0lVX882MG5nhARrSzyprEK6ejonHpdUmaaMPsHE8`)
       - traefik.http.routers.qar.entrypoints=web
       - traefik.http.services.qar.loadbalancer.server.port=8080
 
@@ -285,7 +285,7 @@ services:
       PROCESS_ID_TO_MONITOR: xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
     labels:
       - traefik.enable=true
-      - traefik.http.routers.wrapped-ar.rule=Query(`process-id=xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10`)
+      - traefik.http.routers.wrapped-ar.rule=Query(`process-id`,`xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10`)
       - traefik.http.routers.wrapped-ar.entrypoints=web
       - traefik.http.services.wrapped-ar.loadbalancer.server.port=8080
 
@@ -299,7 +299,7 @@ services:
       PROCESS_ID_TO_MONITOR: oHpt06fqA4lmQsdpYGQMoKJjUehipa2AeS7LndqBVE8
     labels:
       - traefik.enable=true
-      - traefik.http.routers.ao-war-microdexi.rule=Query(`process-id=oHpt06fqA4lmQsdpYGQMoKJjUehipa2AeS7LndqBVE8`)
+      - traefik.http.routers.ao-war-microdexi.rule=Query(`process-id`,`oHpt06fqA4lmQsdpYGQMoKJjUehipa2AeS7LndqBVE8`)
       - traefik.http.routers.ao-war-microdexi.entrypoints=web
       - traefik.http.services.ao-war-microdexi.loadbalancer.server.port=8080
 
@@ -313,7 +313,7 @@ services:
       PROCESS_ID_TO_MONITOR: i56hyWOmM4yvqoVFCp6Ca7a7f8KCnQq68L_WWvpU29k
     labels:
       - traefik.enable=true
-      - traefik.http.routers.ao-usdc-microdexi.rule=Query(`process-id=i56hyWOmM4yvqoVFCp6Ca7a7f8KCnQq68L_WWvpU29k`)
+      - traefik.http.routers.ao-usdc-microdexi.rule=Query(`process-id`,`i56hyWOmM4yvqoVFCp6Ca7a7f8KCnQq68L_WWvpU29k`)
       - traefik.http.routers.ao-usdc-microdexi.entrypoints=web
       - traefik.http.services.ao-usdc-microdexi.loadbalancer.server.port=8080
 
