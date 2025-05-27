@@ -18,6 +18,8 @@ services:
       - --log.level=INFO # keep DEBUG for trouble-shooting only
       - --providers.docker=true
       - --providers.docker.exposedByDefault=false
+      - --providers.file.directory=/etc/traefik/dynamic
+      - --providers.file.watch=true        # hot-reload on change
 
       # ────────── entry-points ─────
       - --entrypoints.web.address=:80
@@ -41,6 +43,7 @@ services:
       - "8080:80"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./dynamic:/etc/traefik/dynamic:ro
     labels:
       - traefik.enable=true
       - traefik.http.routers.tkd.rule=Host(`traefik.localhost`)
@@ -89,9 +92,6 @@ services:
       - traefik.http.routers.dexi.rule=Query(`process-id`,`Meb6GwY5I9QN77F0c5Ku2GpCFxtYyG1mfJus2GWYtII`)
       - traefik.http.routers.dexi.entrypoints=web
       - traefik.http.services.dexi.loadbalancer.server.port=8080
-      # fallback:
-      - traefik.http.routers.dexi-default.rule=PathPrefix(`/`)
-      - traefik.http.routers.dexi-default.priority=1
 
   #Token Locker Process
   aos-token-locker:
@@ -316,7 +316,7 @@ services:
       - traefik.http.routers.ao-usdc-microdexi.rule=Query(`process-id`,`i56hyWOmM4yvqoVFCp6Ca7a7f8KCnQq68L_WWvpU29k`)
       - traefik.http.routers.ao-usdc-microdexi.entrypoints=web
       - traefik.http.services.ao-usdc-microdexi.loadbalancer.server.port=8080
-
+  
   # ─── monitoring stack ─────────────────────────────────────────────
   prometheus:
     image: prom/prometheus

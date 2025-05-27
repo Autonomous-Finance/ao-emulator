@@ -1,0 +1,23 @@
+http:
+  routers:
+    cu-fallback:
+      rule: PathPrefix(`/`)          # anything that no other router caught
+      priority: 1                    # lower than the 65-priority query routers
+      entryPoints: [web]
+      service: cu-service
+      middlewares: [cu-set-host]
+
+  middlewares:
+    cu-set-host:                     # overwrite Host + remove misleading forwards
+      headers:
+        customRequestHeaders:
+          Host: cu.ao-testnet.xyz
+          X-Forwarded-Host: cu.ao-testnet.xyz
+          Forwarded: host=cu.ao-testnet.xyz;proto=https
+
+  services:
+    cu-service:
+      loadBalancer:
+        passHostHeader: false        # don't leak "localhost" upstream
+        servers:
+          - url: https://cu.ao-testnet.xyz/dry-run
