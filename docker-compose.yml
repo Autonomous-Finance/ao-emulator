@@ -64,10 +64,10 @@ services:
       - traefik.http.routers.agent.rule=Query(`process-id`,`x_WysdFwKD_buywRK9qLA7IexdlsvVTVq6ESWMRCzFY`)
       - traefik.http.routers.agent.entrypoints=web
       - traefik.http.services.agent.loadbalancer.server.port=8080
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.token-factory.loadbalancer.strategy=wrr
+      - traefik.http.services.agent.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.agent.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.agent.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.agent.loadbalancer.strategy=wrr
 
   # Permaweb Index Process
   aos-permaweb-index:
@@ -82,10 +82,10 @@ services:
       - traefik.http.routers.permaweb.rule=Query(`process-id`,`rxxU4g-7tUHGvF28W2l53hxarpbaFR4NaSnOaxx6MIE`)
       - traefik.http.routers.permaweb.entrypoints=web
       - traefik.http.services.permaweb.loadbalancer.server.port=8080
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.token-factory.loadbalancer.strategy=wrr
+      - traefik.http.services.permaweb.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.permaweb.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.permaweb.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.permaweb.loadbalancer.strategy=wrr
 
   # Dexi Process
   aos-dexi:
@@ -100,10 +100,10 @@ services:
       - traefik.http.routers.dexi.rule=Query(`process-id`,`Meb6GwY5I9QN77F0c5Ku2GpCFxtYyG1mfJus2GWYtII`)
       - traefik.http.routers.dexi.entrypoints=web
       - traefik.http.services.dexi.loadbalancer.server.port=8080
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.token-factory.loadbalancer.strategy=wrr
+      - traefik.http.services.dexi.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.dexi.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.dexi.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.dexi.loadbalancer.strategy=wrr
 
   #Token Locker Process
   aos-token-locker:
@@ -118,10 +118,10 @@ services:
       - traefik.http.routers.token-locker.rule=Query(`process-id`,`jxiKuu_21_KjNga8KxH1h8fJeoCl9DzcEjGBiKN66DY`)
       - traefik.http.routers.token-locker.entrypoints=web
       - traefik.http.services.token-locker.loadbalancer.server.port=8080
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.token-factory.loadbalancer.strategy=wrr
+      - traefik.http.services.token-locker.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.token-locker.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.token-locker.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.token-locker.loadbalancer.strategy=wrr
 
   # Permaweb Index Token Process
   aos-permaweb-index-token:
@@ -136,10 +136,10 @@ services:
       - traefik.http.routers.permaweb-token.rule=Query(`process-id`,`4hXj_E-5fAKmo4E8KjgQvuDJKAFk9P2grhycVmISDLs`)
       - traefik.http.routers.permaweb-token.entrypoints=web
       - traefik.http.services.permaweb-token.loadbalancer.server.port=8080
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.token-factory.loadbalancer.strategy=wrr
+      - traefik.http.services.permaweb-token.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.permaweb-token.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.permaweb-token.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.permaweb-token.loadbalancer.strategy=wrr
 
   # Registry Process
   aos-registry:
@@ -154,10 +154,10 @@ services:
       - traefik.http.routers.registry.rule=Query(`process-id`,`iZuNCnURIQHazG9cIui2B5FdQzWRE8TMa28i6nHr5ic`)
       - traefik.http.routers.registry.entrypoints=web
       - traefik.http.services.registry.loadbalancer.server.port=8080
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.token-factory.loadbalancer.strategy=wrr
+      - traefik.http.services.registry.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.registry.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.registry.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.registry.loadbalancer.strategy=wrr
 
   # Token Factory Process
   aos-token-factory:
@@ -190,10 +190,10 @@ services:
       - traefik.http.routers.portfolio.rule=Query(`process-id`,`OF3TuQgd3RkTb9HSs_V94vVPFeRXi1h0EGJhSgda7OI`)
       - traefik.http.routers.portfolio.entrypoints=web
       - traefik.http.services.portfolio.loadbalancer.server.port=8080
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.token-factory.loadbalancer.strategy=wrr
+      - traefik.http.services.portfolio.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.portfolio.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.portfolio.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.portfolio.loadbalancer.strategy=wrr
 
   # FLP Factory Process
   aos-flp-factory:
@@ -208,10 +208,10 @@ services:
       - traefik.http.routers.flp.rule=Query(`process-id`,`It-_AKlEfARBmJdbJew1nG9_hIaZt0t20wQc28mFGBE`)
       - traefik.http.routers.flp.entrypoints=web
       - traefik.http.services.flp.loadbalancer.server.port=8080
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.token-factory.loadbalancer.strategy=wrr
+      - traefik.http.services.flp.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.flp.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.flp.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.flp.loadbalancer.strategy=wrr
 
   # AMM Factory Process
   aos-amm-factory:
@@ -226,10 +226,10 @@ services:
       - traefik.http.routers.amm.rule=Query(`process-id`,`3XBGLrygs11K63F_7mldWz4veNx6Llg6hI2yZs8LKHo`)
       - traefik.http.routers.amm.entrypoints=web
       - traefik.http.services.amm.loadbalancer.server.port=8080
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.token-factory.loadbalancer.strategy=wrr
+      - traefik.http.services.amm.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.amm.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.amm.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.amm.loadbalancer.strategy=wrr
 
   # Payment Token Process
   aos-payment-token:
@@ -244,10 +244,10 @@ services:
       - traefik.http.routers.payment-token.rule=Query(`process-id`,`atlyT9ph8ex_TxDDkQ2fdbhVT62sLw6boJPdEr7UqJE`)
       - traefik.http.routers.payment-token.entrypoints=web
       - traefik.http.services.payment-token.loadbalancer.server.port=8080
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.token-factory.loadbalancer.strategy=wrr
+      - traefik.http.services.payment-token.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.payment-token.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.payment-token.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.payment-token.loadbalancer.strategy=wrr
 
   # AO Process
   aos-ao:
@@ -262,10 +262,10 @@ services:
       - traefik.http.routers.ao.rule=Query(`process-id`,`0syT13r0s0tgPmIed95bJnuSqaD29HQNN8D3ElLSrsc`)
       - traefik.http.routers.ao.entrypoints=web
       - traefik.http.services.ao.loadbalancer.server.port=8080
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.token-factory.loadbalancer.strategy=wrr
+      - traefik.http.services.ao.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.ao.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.ao.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.ao.loadbalancer.strategy=wrr
 
   # Delegation Oracle Process
   aos-delegation-oracle:
@@ -280,10 +280,10 @@ services:
       - traefik.http.routers.delegation-oracle.rule=Query(`process-id`,`cuxSKjGJ-WDB9PzSkVkVVrIBSh3DrYHYz44usQOj5yE`)
       - traefik.http.routers.delegation-oracle.entrypoints=web
       - traefik.http.services.delegation-oracle.loadbalancer.server.port=8080
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.token-factory.loadbalancer.strategy=wrr
+      - traefik.http.services.delegation-oracle.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.delegation-oracle.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.delegation-oracle.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.delegation-oracle.loadbalancer.strategy=wrr
 
   # Delegation Historian Process
   aos-delegation-historian:
@@ -298,10 +298,10 @@ services:
       - traefik.http.routers.delegation-historian.rule=Query(`process-id`,`NRP0xtzeV9MHgwLmgD254erUB7mUjMBhBkYkNYkbNEo`)
       - traefik.http.routers.delegation-historian.entrypoints=web
       - traefik.http.services.delegation-historian.loadbalancer.server.port=8080
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.token-factory.loadbalancer.strategy=wrr
+      - traefik.http.services.delegation-historian.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.delegation-historian.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.delegation-historian.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.delegation-historian.loadbalancer.strategy=wrr
 
   # Botega FLP Process
   aos-botega-flp:
@@ -316,10 +316,10 @@ services:
       - traefik.http.routers.botega-flp.rule=Query(`process-id`,`UcBPqkaVI7W4I_YMznrt2JUoyc_7TScCdZWOOSBvMSU`)
       - traefik.http.routers.botega-flp.entrypoints=web
       - traefik.http.services.botega-flp.loadbalancer.server.port=8080
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.token-factory.loadbalancer.strategy=wrr
+      - traefik.http.services.botega-flp.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.botega-flp.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.botega-flp.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.botega-flp.loadbalancer.strategy=wrr
 
   # QAR Process
   aos-qar:
@@ -334,10 +334,10 @@ services:
       - traefik.http.routers.qar.rule=Query(`process-id`,`NG-0lVX882MG5nhARrSzyprEK6ejonHpdUmaaMPsHE8`)
       - traefik.http.routers.qar.entrypoints=web
       - traefik.http.services.qar.loadbalancer.server.port=8080
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.token-factory.loadbalancer.strategy=wrr
+      - traefik.http.services.qar.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.qar.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.qar.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.qar.loadbalancer.strategy=wrr
 
   # Wrapped AR Process
   aos-wrapped-ar:
@@ -352,10 +352,10 @@ services:
       - traefik.http.routers.wrapped-ar.rule=Query(`process-id`,`xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10`)
       - traefik.http.routers.wrapped-ar.entrypoints=web
       - traefik.http.services.wrapped-ar.loadbalancer.server.port=8080
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.token-factory.loadbalancer.strategy=wrr
+      - traefik.http.services.wrapped-ar.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.wrapped-ar.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.wrapped-ar.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.wrapped-ar.loadbalancer.strategy=wrr
 
   # AO/wAR Microdexi Process
   aos-ao-war-microdexi:
@@ -370,10 +370,10 @@ services:
       - traefik.http.routers.ao-war-microdexi.rule=Query(`process-id`,`oHpt06fqA4lmQsdpYGQMoKJjUehipa2AeS7LndqBVE8`)
       - traefik.http.routers.ao-war-microdexi.entrypoints=web
       - traefik.http.services.ao-war-microdexi.loadbalancer.server.port=8080
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.token-factory.loadbalancer.strategy=wrr
+      - traefik.http.services.ao-war-microdexi.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.ao-war-microdexi.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.ao-war-microdexi.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.ao-war-microdexi.loadbalancer.strategy=wrr
 
   # AO/USDC Microdexi Process
   aos-ao-usdc-microdexi:
@@ -388,10 +388,10 @@ services:
       - traefik.http.routers.ao-usdc-microdexi.rule=Query(`process-id`,`i56hyWOmM4yvqoVFCp6Ca7a7f8KCnQq68L_WWvpU29k`)
       - traefik.http.routers.ao-usdc-microdexi.entrypoints=web
       - traefik.http.services.ao-usdc-microdexi.loadbalancer.server.port=8080
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.token-factory.loadbalancer.strategy=wrr
+      - traefik.http.services.ao-usdc-microdexi.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.ao-usdc-microdexi.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.ao-usdc-microdexi.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.ao-usdc-microdexi.loadbalancer.strategy=wrr
   
   # ─── monitoring stack ─────────────────────────────────────────────
   prometheus:
