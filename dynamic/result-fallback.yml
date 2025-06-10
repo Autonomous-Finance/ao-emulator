@@ -1,0 +1,23 @@
+http:
+  routers:
+    result-fallback:
+      rule: Path(`/result`)            # exact match for /result path
+      priority: 100                    # very high priority to always intercept
+      entryPoints: [web]
+      service: result-service
+      middlewares: [result-set-host]
+
+  middlewares:
+    result-set-host:                   # overwrite Host + remove misleading forwards
+      headers:
+        customRequestHeaders:
+          Host: cu.ao-testnet.xyz
+          X-Forwarded-Host: cu.ao-testnet.xyz
+          Forwarded: host=cu.ao-testnet.xyz;proto=https
+
+  services:
+    result-service:
+      loadBalancer:
+        passHostHeader: false          # don't leak "localhost" upstream
+        servers:
+          - url: https://cu.ao-testnet.xyz/result 
