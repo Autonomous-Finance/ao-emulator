@@ -1,7 +1,7 @@
 http:
   routers:
     result-fallback:
-      rule: Path(`/result`)            # exact match for /result path
+      rule: PathPrefix(`/result`)       # changed from Path to PathPrefix to catch /result/*
       priority: 100                    # very high priority to always intercept
       entryPoints: [web]
       service: result-service
