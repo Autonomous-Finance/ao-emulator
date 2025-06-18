@@ -393,6 +393,26 @@ services:
       - traefik.http.services.ao-usdc-microdexi.loadbalancer.healthcheck.timeout=3s
       - traefik.http.services.ao-usdc-microdexi.loadbalancer.strategy=wrr
   
+
+  # Auction Factory Staging Process
+  aos-auction-factory-staging:
+    <<: *service-base
+    deploy:
+      replicas: 1
+    environment:
+      <<: *env-base
+      PROCESS_ID_TO_MONITOR: q1aypD57W2L2mJiAN98gwKRWt6R8WU0waFFjDUPB00A
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.auction-factory-staging.rule=Query(`process-id`,`q1aypD57W2L2mJiAN98gwKRWt6R8WU0waFFjDUPB00A`)
+      - traefik.http.routers.auction-factory-staging.entrypoints=web
+      - traefik.http.services.auction-factory-staging.loadbalancer.server.port=8080
+      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.auction-factory-staging.loadbalancer.strategy=wrr
+  
+
   # ─── monitoring stack ─────────────────────────────────────────────
   prometheus:
     image: prom/prometheus
