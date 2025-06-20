@@ -119,6 +119,18 @@ if (LOAD_FROM_SCRATCH && (CHECKPOINT_TX_ID || LOAD_FROM_CHECKPOINT)) {
     console.warn('WARNING: LOAD_FROM_SCRATCH is enabled. CHECKPOINT_TX_ID and LOAD_FROM_CHECKPOINT settings will be ignored as the system will start from nonce 0.');
 }
 
+// -- Configuration for timeouts --
+// Timeout (in ms) for fetching messages from the SU. If the SU does not
+// respond within this window the request will be aborted so that the
+// polling loop can continue running. Can be overridden via the env var
+// FETCH_MESSAGES_TIMEOUT_MS.
+const DEFAULT_FETCH_MESSAGES_TIMEOUT_MS = 30000; // 30 seconds
+const FETCH_MESSAGES_TIMEOUT_MS = process.env.FETCH_MESSAGES_TIMEOUT_MS ?
+    Number(process.env.FETCH_MESSAGES_TIMEOUT_MS) : DEFAULT_FETCH_MESSAGES_TIMEOUT_MS;
+if (isNaN(FETCH_MESSAGES_TIMEOUT_MS) || FETCH_MESSAGES_TIMEOUT_MS <= 0) {
+    console.warn(`Invalid FETCH_MESSAGES_TIMEOUT_MS value '${process.env.FETCH_MESSAGES_TIMEOUT_MS}'. Falling back to default ${DEFAULT_FETCH_MESSAGES_TIMEOUT_MS}.`);
+}
+
 // --- Helper function to add jitter ---
 function applyJitter(intervalMs, maxJitterMs = 5000) {
     const jitter = Math.random() * maxJitterMs;
@@ -134,6 +146,14 @@ let isPollingMessages = false;
 let lastProcessedNonce = -1; // Tracks the nonce of the last successfully processed message
 let globalProcessEnv = {};
 let aoReadState = null; // AoReadState instance
+
+// --- Helper utility: Promise timeout wrapper ---
+function withTimeout(promise, timeoutMs, description = 'operation') {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error(`${description} timed out after ${timeoutMs} ms`)), timeoutMs))
+    ]);
+}
 
 // --- New core logic functions ---
 
@@ -163,7 +183,14 @@ async function fetchAndProcessMessages(fromNonceOverride) {
             fromNonce: effectiveFromNonce,
             suUrl: SU_URL
         };
-        const fetchedData = await aoReadState.loadMessages(messagesContext);
+        // Wrap the loadMessages call with a timeout so that a slow or
+        // stalled network request does not permanently block the polling
+        // loop (leaving isPollingMessages stuck at true).
+        const fetchedData = await withTimeout(
+            aoReadState.loadMessages(messagesContext),
+            FETCH_MESSAGES_TIMEOUT_MS,
+            'aoReadState.loadMessages'
+        );
         const extraMessages = (fetchedData.messages || []).sort((a, b) => a.Nonce - b.Nonce);
 
         if (extraMessages && extraMessages.length > 0) {

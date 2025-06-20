@@ -1,5 +1,5 @@
 export function loadEnv(pid) {
-  return fetch(`https://arweave-goldsky.arweave.net/graphql`, {
+  return fetch(`https://arweave-search.goldsky.com/graphql`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -28,7 +28,7 @@ query {
   }).then(res => res.json())
     .then(res => res.data?.transactions?.edges[0]?.node)
     .then(async process => {
-      
+
       process.owner = process.owner.address
       if (process.owner == "fcoN_xJeisVsPXA-trzVAuIiqO3ydLQxM-L4XbrQKzY") {
         process.owner = process.tags.find(t => t.name === "From-Process")?.value
@@ -58,13 +58,13 @@ query {
         }
       }
     }`
-      })       
+        })
+      })
+        .then(res => res.json())
+        .then(res => res.data?.transactions?.edges[0]?.node)
+      module.owner = module.owner.address
+      return { Process: capitalizeKeys(process), Module: capitalizeKeys(module) }
     })
-    .then(res => res.json())
-    .then(res => res.data?.transactions?.edges[0]?.node)
-    module.owner = module.owner.address
-    return { Process: capitalizeKeys(process), Module: capitalizeKeys(module) }
-  })
 
 }
 
