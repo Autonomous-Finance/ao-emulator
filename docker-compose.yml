@@ -4,6 +4,12 @@ x-service-base: &service-base
   build: .
   expose: [ "8080" ]
   networks: [ aos-network ]
+  healthcheck:
+    test: [ "CMD-SHELL", "curl --fail --silent --max-time 10 http://localhost:8080/health || exit 1" ]
+    interval: 30s
+    timeout: 10s
+    retries: 5
+    start_period: 300s
 
 x-env-base: &env-base
   SU_URL: https://su-router.ao-testnet.xyz
@@ -86,24 +92,6 @@ services:
       - traefik.http.services.permaweb.loadbalancer.healthcheck.interval=30s
       - traefik.http.services.permaweb.loadbalancer.healthcheck.timeout=3s
       - traefik.http.services.permaweb.loadbalancer.strategy=wrr
-
-  # Dexi Process
-  aos-dexi:
-    <<: *service-base
-    deploy:
-      replicas: 4
-    environment:
-      <<: *env-base
-      PROCESS_ID_TO_MONITOR: Meb6GwY5I9QN77F0c5Ku2GpCFxtYyG1mfJus2GWYtII
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.dexi.rule=Query(`process-id`,`Meb6GwY5I9QN77F0c5Ku2GpCFxtYyG1mfJus2GWYtII`)
-      - traefik.http.routers.dexi.entrypoints=web
-      - traefik.http.services.dexi.loadbalancer.server.port=8080
-      - traefik.http.services.dexi.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.dexi.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.dexi.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.dexi.loadbalancer.strategy=wrr
 
   #Token Locker Process
   aos-token-locker:
@@ -231,42 +219,6 @@ services:
       - traefik.http.services.amm.loadbalancer.healthcheck.timeout=3s
       - traefik.http.services.amm.loadbalancer.strategy=wrr
 
-  # Payment Token Process
-  aos-payment-token:
-    <<: *service-base
-    deploy:
-      replicas: 1
-    environment:
-      <<: *env-base
-      PROCESS_ID_TO_MONITOR: atlyT9ph8ex_TxDDkQ2fdbhVT62sLw6boJPdEr7UqJE
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.payment-token.rule=Query(`process-id`,`atlyT9ph8ex_TxDDkQ2fdbhVT62sLw6boJPdEr7UqJE`)
-      - traefik.http.routers.payment-token.entrypoints=web
-      - traefik.http.services.payment-token.loadbalancer.server.port=8080
-      - traefik.http.services.payment-token.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.payment-token.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.payment-token.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.payment-token.loadbalancer.strategy=wrr
-
-  # AO Process
-  aos-ao:
-    <<: *service-base
-    deploy:
-      replicas: 1
-    environment:
-      <<: *env-base
-      PROCESS_ID_TO_MONITOR: 0syT13r0s0tgPmIed95bJnuSqaD29HQNN8D3ElLSrsc
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.ao.rule=Query(`process-id`,`0syT13r0s0tgPmIed95bJnuSqaD29HQNN8D3ElLSrsc`)
-      - traefik.http.routers.ao.entrypoints=web
-      - traefik.http.services.ao.loadbalancer.server.port=8080
-      - traefik.http.services.ao.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.ao.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.ao.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.ao.loadbalancer.strategy=wrr
-
   # Delegation Oracle Process
   aos-delegation-oracle:
     <<: *service-base
@@ -320,79 +272,6 @@ services:
       - traefik.http.services.botega-flp.loadbalancer.healthcheck.interval=30s
       - traefik.http.services.botega-flp.loadbalancer.healthcheck.timeout=3s
       - traefik.http.services.botega-flp.loadbalancer.strategy=wrr
-
-  # QAR Process
-  aos-qar:
-    <<: *service-base
-    deploy:
-      replicas: 1
-    environment:
-      <<: *env-base
-      PROCESS_ID_TO_MONITOR: NG-0lVX882MG5nhARrSzyprEK6ejonHpdUmaaMPsHE8
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.qar.rule=Query(`process-id`,`NG-0lVX882MG5nhARrSzyprEK6ejonHpdUmaaMPsHE8`)
-      - traefik.http.routers.qar.entrypoints=web
-      - traefik.http.services.qar.loadbalancer.server.port=8080
-      - traefik.http.services.qar.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.qar.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.qar.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.qar.loadbalancer.strategy=wrr
-
-  # Wrapped AR Process
-  aos-wrapped-ar:
-    <<: *service-base
-    deploy:
-      replicas: 2
-    environment:
-      <<: *env-base
-      PROCESS_ID_TO_MONITOR: xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.wrapped-ar.rule=Query(`process-id`,`xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10`)
-      - traefik.http.routers.wrapped-ar.entrypoints=web
-      - traefik.http.services.wrapped-ar.loadbalancer.server.port=8080
-      - traefik.http.services.wrapped-ar.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.wrapped-ar.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.wrapped-ar.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.wrapped-ar.loadbalancer.strategy=wrr
-
-  # AO/wAR Microdexi Process
-  aos-ao-war-microdexi:
-    <<: *service-base
-    deploy:
-      replicas: 1
-    environment:
-      <<: *env-base
-      PROCESS_ID_TO_MONITOR: oHpt06fqA4lmQsdpYGQMoKJjUehipa2AeS7LndqBVE8
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.ao-war-microdexi.rule=Query(`process-id`,`oHpt06fqA4lmQsdpYGQMoKJjUehipa2AeS7LndqBVE8`)
-      - traefik.http.routers.ao-war-microdexi.entrypoints=web
-      - traefik.http.services.ao-war-microdexi.loadbalancer.server.port=8080
-      - traefik.http.services.ao-war-microdexi.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.ao-war-microdexi.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.ao-war-microdexi.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.ao-war-microdexi.loadbalancer.strategy=wrr
-
-  # AO/USDC Microdexi Process
-  aos-ao-usdc-microdexi:
-    <<: *service-base
-    deploy:
-      replicas: 1
-    environment:
-      <<: *env-base
-      PROCESS_ID_TO_MONITOR: i56hyWOmM4yvqoVFCp6Ca7a7f8KCnQq68L_WWvpU29k
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.ao-usdc-microdexi.rule=Query(`process-id`,`i56hyWOmM4yvqoVFCp6Ca7a7f8KCnQq68L_WWvpU29k`)
-      - traefik.http.routers.ao-usdc-microdexi.entrypoints=web
-      - traefik.http.services.ao-usdc-microdexi.loadbalancer.server.port=8080
-      - traefik.http.services.ao-usdc-microdexi.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.ao-usdc-microdexi.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.ao-usdc-microdexi.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.ao-usdc-microdexi.loadbalancer.strategy=wrr
-  
 
   # Auction Factory Staging Process
   aos-auction-factory-staging:

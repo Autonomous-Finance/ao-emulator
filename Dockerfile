@@ -6,6 +6,9 @@ WORKDIR /usr/src/app
 COPY package.json package-lock.json ./
 RUN npm ci --only=production
 
+# Install curl required for healthcheck (Alpine)
+RUN apk add --no-cache curl
+
 # Copy application code
 COPY index.js .
 COPY src/ ./src/

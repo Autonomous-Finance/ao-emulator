@@ -147,6 +147,19 @@ let lastProcessedNonce = -1; // Tracks the nonce of the last successfully proces
 let globalProcessEnv = {};
 let aoReadState = null; // AoReadState instance
 
+// ---- Watchdog / health tracking ----
+let lastMessageFetchTime = Date.now();
+
+// Consider the poller stalled if no successful fetch has happened for this long.
+const POLLING_STALL_THRESHOLD_MS = process.env.POLLING_STALL_THRESHOLD_MS ?
+    parseInt(process.env.POLLING_STALL_THRESHOLD_MS, 10) :
+    Math.max(MESSAGE_POLL_INTERVAL_MS * 5, 60000);
+
+// How often the watchdog will check for stalls.
+const POLLING_STALL_CHECK_INTERVAL_MS = process.env.POLLING_STALL_CHECK_INTERVAL_MS ?
+    parseInt(process.env.POLLING_STALL_CHECK_INTERVAL_MS, 10) :
+    Math.max(MESSAGE_POLL_INTERVAL_MS, 10000);
+
 // --- Helper utility: Promise timeout wrapper ---
 function withTimeout(promise, timeoutMs, description = 'operation') {
     return Promise.race([
@@ -191,6 +204,10 @@ async function fetchAndProcessMessages(fromNonceOverride) {
             FETCH_MESSAGES_TIMEOUT_MS,
             'aoReadState.loadMessages'
         );
+
+        // Mark the time of a successful SU fetch (regardless of whether any
+        // messages were returned).
+        lastMessageFetchTime = Date.now();
         const extraMessages = (fetchedData.messages || []).sort((a, b) => a.Nonce - b.Nonce);
 
         if (extraMessages && extraMessages.length > 0) {
@@ -653,6 +670,26 @@ async function initializeAndPrepareAos() {
 
         const jitteredMessagePollInterval = applyJitter(MESSAGE_POLL_INTERVAL_MS);
         setInterval(pollForNewMessages, jitteredMessagePollInterval);
+
+        // --------------------------------------------------------------------
+        // Watchdog to detect and recover from stalled SU polling
+        // --------------------------------------------------------------------
+        setInterval(() => {
+            const now = Date.now();
+            const elapsed = now - lastMessageFetchTime;
+            if (elapsed > POLLING_STALL_THRESHOLD_MS) {
+                console.warn(`[watchdog] Detected no successful message fetch for ${elapsed}ms (> ${POLLING_STALL_THRESHOLD_MS}ms). Attempting recovery fetch...`);
+
+                // Only trigger a manual fetch if no other conflicting work is in progress
+                if (!isPollingMessages && !isPerformingFullLoad) {
+                    fetchAndProcessMessages()
+                        .catch(err => console.error('[watchdog] Recovery fetch failed:', err));
+                } else {
+                    console.log('[watchdog] Recovery skipped – another operation is in progress.');
+                }
+            }
+        }, POLLING_STALL_CHECK_INTERVAL_MS);
+
         return aos;
     } catch (error) {
         console.error('Failed to initialize aoslocal:', error);
@@ -802,15 +839,23 @@ app.get('/health', (req, res) => {
     if (isPollingMessages) {
         return res.status(200).json({ status: 'BUSY_POLLING_MESSAGES', message: 'aoslocal is polling for new messages.' });
     }
-    res.status(200).json({ status: 'OK', message: 'aoslocal initialized and idle or actively polling.' });
+    const elapsed = Date.now() - lastMessageFetchTime;
+    res.status(200).json({ status: 'OK', message: 'aoslocal initialized and idle or actively polling.', millisSinceLastMessageFetch: elapsed });
 });
 
 async function startServer() {
-    try {
-        await initializeAndPrepareAos();
-        app.listen(PORT, () => {
+    // Start Express server immediately so that the health-check port is open
+    app.listen(PORT, () => {
+        console.log('-------------------------------------------------------');
+        console.log(` aos-http-service STARTING on port ${PORT} (initializing Wasm state…)`);
+        console.log('-------------------------------------------------------');
+    });
+
+    // Kick off AoS initialization in the background
+    initializeAndPrepareAos()
+        .then(() => {
             console.log('-------------------------------------------------------');
-            console.log(` aos-http-service listening on port ${PORT}`);
+            console.log(` aos-http-service READY on port ${PORT}`);
             console.log('-------------------------------------------------------');
             console.log(`  Monitored Process ID : ${PROCESS_ID_TO_MONITOR}`);
             console.log(`  Effective Module ID  : ${AOS_MODULE_ID || 'Derived from Monitored Process or LATEST'}`);
@@ -828,11 +873,11 @@ async function startServer() {
                 console.log(`  Forward to Nonce Limit: ${FORWARD_TO_NONCE_LIMIT}`);
             }
             console.log('-------------------------------------------------------');
+        })
+        .catch((error) => {
+            console.error('Error during initialization:', error);
+            process.exit(1);
         });
-    } catch (error) {
-        console.error('Error starting server:', error);
-        process.exit(1);
-    }
 }
 
 startServer();
