@@ -219,23 +219,6 @@ services:
       - traefik.http.services.amm.loadbalancer.healthcheck.timeout=3s
       - traefik.http.services.amm.loadbalancer.strategy=wrr
 
-  # Delegation Oracle Process
-  aos-delegation-oracle:
-    <<: *service-base
-    deploy:
-      replicas: 2
-    environment:
-      <<: *env-base
-      PROCESS_ID_TO_MONITOR: cuxSKjGJ-WDB9PzSkVkVVrIBSh3DrYHYz44usQOj5yE
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.delegation-oracle.rule=Query(`process-id`,`cuxSKjGJ-WDB9PzSkVkVVrIBSh3DrYHYz44usQOj5yE`)
-      - traefik.http.routers.delegation-oracle.entrypoints=web
-      - traefik.http.services.delegation-oracle.loadbalancer.server.port=8080
-      - traefik.http.services.delegation-oracle.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.delegation-oracle.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.delegation-oracle.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.delegation-oracle.loadbalancer.strategy=wrr
 
   # Delegation Historian Process
   aos-delegation-historian:
