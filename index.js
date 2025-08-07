@@ -214,31 +214,34 @@ async function fetchAndProcessMessages(fromNonceOverride) {
         // Mark the time of a successful SU fetch (regardless of whether any
         // messages were returned).
         lastMessageFetchTime = Date.now();
-        const extraMessages = (fetchedData.messages || []).sort((a, b) => a.Nonce - b.Nonce);
+        const extraMessages = (fetchedData.messages || []).sort((a, b) => a.AssignmentNonce - b.AssignmentNonce);
 
         if (extraMessages && extraMessages.length > 0) {
             console.log(`[fetchAndProcessMessages] Fetched ${extraMessages.length} additional messages to process.`);
             for (const message of extraMessages) {
-                if (FORWARD_TO_NONCE_LIMIT !== null && message.Nonce > FORWARD_TO_NONCE_LIMIT) {
-                    console.log(`[fetchAndProcessMessages] Message (ID: ${message.Id}, Nonce: ${message.Nonce}) exceeds FORWARD_TO_NONCE_LIMIT (${FORWARD_TO_NONCE_LIMIT}). Stopping processing for this batch.`);
+                if (FORWARD_TO_NONCE_LIMIT !== null && message.AssignmentNonce > FORWARD_TO_NONCE_LIMIT) {
+                    console.log(`[fetchAndProcessMessages] Message (ID: ${message.Id}, Nonce: ${message.AssignmentNonce}) exceeds FORWARD_TO_NONCE_LIMIT (${FORWARD_TO_NONCE_LIMIT}). Stopping processing for this batch.`);
                     break; // Stop processing further messages in this batch
                 }
 
                 let messageToSend = { ...message };
+                console.log(`[fetchAndProcessMessages] Processing message (ID: ${messageToSend.Id}, Nonce: ${messageToSend.AssignmentNonce}) for ${messageToSend.Target}...`);
+
+                console.log(`[DEBUG] Original message ${message.Id} AssignmentNonce: ${message.AssignmentNonce}`);
                 if (messageToSend.Tags && Array.isArray(messageToSend.Tags)) {
                     messageToSend = flattenMessageTags(messageToSend);
                 }
+                console.log(`[DEBUG] After flattening message ${messageToSend.Id} AssignmentNonce: ${messageToSend.AssignmentNonce}`);
 
                 if (!messageToSend.Target) {
                     messageToSend.Target = PROCESS_ID_TO_MONITOR;
                 }
 
-                console.log(`[fetchAndProcessMessages] Processing message (ID: ${messageToSend.Id}, Nonce: ${messageToSend.Nonce}) for ${messageToSend.Target}...`);
                 try {
                     // console.log(`[fetchAndProcessMessages] messageToSend:`, messageToSend);
                     const r = await aos.send(messageToSend, globalProcessEnv);
                     // console.log(`[fetchAndProcessMessages] aos.send() result:`, r);
-                    lastProcessedNonce = messageToSend.Nonce; // Update nonce only after successful send
+                    lastProcessedNonce = messageToSend.AssignmentNonce; // Update nonce only after successful send
                     console.log(`[fetchAndProcessMessages] Successfully processed message ID: ${messageToSend.Id}. New lastProcessedNonce: ${lastProcessedNonce}`);
 
                     // Print result of the last message when nonce limit is reached
@@ -248,14 +251,14 @@ async function fetchAndProcessMessages(fromNonceOverride) {
                         console.log('-------------------------------------------------------');
                         console.log('Message Details:');
                         console.log(`  ID: ${messageToSend.Id}`);
-                        console.log(`  Nonce: ${messageToSend.Nonce}`);
+                        console.log(`  Nonce: ${messageToSend.AssignmentNonce}`);
                         console.log(`  Target: ${messageToSend.Target}`);
                         console.log('\nResult:');
                         console.log(JSON.stringify(r, null, 2));
                         console.log('-------------------------------------------------------\n');
                     }
                 } catch (sendError) {
-                    console.error(`[fetchAndProcessMessages] Error sending message ID ${messageToSend.Id} (Nonce: ${messageToSend.Nonce}) to aos.send:`, sendError);
+                    console.error(`[fetchAndProcessMessages] Error sending message ID ${messageToSend.Id} (Nonce: ${messageToSend.AssignmentNonce}) to aos.send:`, sendError);
                     console.error('[fetchAndProcessMessages] Stopping further message processing in this batch to maintain order.');
                     return; // Stop processing this batch
                 }
@@ -734,6 +737,14 @@ function flattenMessageTags(message) {
     if (Array.isArray(message.Tags)) {
         message.Tags.forEach(tag => {
             if (tag && tag.name && tag.value !== undefined) {
+                // Special handling for Assignment-Nonce - set it as AssignmentNonce property
+                if (tag.name === 'Assignment-Nonce') {
+                    const parsedValue = parseInt(tag.value, 10);
+                    if (!isNaN(parsedValue)) {
+                        flattenedMessage.AssignmentNonce = parsedValue;
+                    }
+                }
+
                 // Only add to root level if it doesn't already exist
                 if (flattenedMessage[tag.name] === undefined) {
                     flattenedMessage[tag.name] = tag.value;

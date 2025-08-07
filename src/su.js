@@ -330,13 +330,21 @@ export class AoReadState {
             // Parse assignment tags to get metadata
             const assignmentTags = assignmentData?.tags ? parseTags(assignmentData.tags) : {}
 
+            // Debug: Log assignment data structure
+            logger.debug(`Assignment data for message ${messageData.id}:`, JSON.stringify(assignmentData, null, 2))
+            logger.debug(`Parsed assignment tags:`, JSON.stringify(assignmentTags, null, 2))
+
             // Extract assignment nonce/epoch first (these take priority for forwarding)
-            const assignmentNonce = assignmentTags.Nonce ? parseInt(assignmentTags.Nonce, 10) : undefined
+            // Try both 'Nonce' and 'Ordinate' as they might be used interchangeably
+            const assignmentNonce = assignmentTags.Nonce ? parseInt(assignmentTags.Nonce, 10) :
+                (assignmentTags.Ordinate ? parseInt(assignmentTags.Ordinate, 10) : undefined)
             const assignmentEpoch = assignmentTags.Epoch ? parseInt(assignmentTags.Epoch, 10) : undefined
 
             // Log nonce precedence for debugging
             if (assignmentNonce !== undefined) {
                 logger.debug(`Using assignment nonce ${assignmentNonce} for message ${messageData.id}`)
+            } else {
+                logger.debug(`No assignment nonce found for message ${messageData.id}, will check message tags`)
             }
 
             // Extract basic message properties from node.message
@@ -356,8 +364,8 @@ export class AoReadState {
                 'Hash-Chain': assignmentTags['Hash-Chain'],
                 // Cron - needs clarification where this comes from in the new structure
                 Cron: messageData.cron || assignmentTags.Cron || false, // Assuming it might be in message or tags
-                // Nonce from assignment tags (priority for forwarding)
-                Nonce: assignmentNonce,
+                // AssignmentNonce from assignment tags (priority for forwarding)
+                AssignmentNonce: assignmentNonce,
                 // Epoch from assignment tags (priority for forwarding)
                 Epoch: assignmentEpoch,
                 // How to determine deepHash and isAssignment from the new structure?
@@ -365,6 +373,9 @@ export class AoReadState {
                 deepHash: assignmentTags.deepHash, // Placeholder - assuming a tag exists
                 isAssignment: !!assignmentData // Mark as assignment if assignmentData exists
             }
+
+            // Debug: Log the final message object to verify AssignmentNonce is set
+            logger.debug(`Final message object for ${messageData.id} - AssignmentNonce: ${message.AssignmentNonce}`)
 
             // Add assignment nonce/epoch to Tags array only under their own keys (never as "Nonce" or "Epoch")
             if (assignmentNonce !== undefined) {
@@ -384,10 +395,10 @@ export class AoReadState {
                     if (tag.name === 'Nonce' && assignmentNonce === undefined) {
                         const parsedValue = parseInt(tag.value, 10)
                         if (!isNaN(parsedValue)) {
-                            message[tag.name] = parsedValue
+                            message.AssignmentNonce = parsedValue
                         } else {
                             logger.warn(`Failed to parse numeric value for message tag '${tag.name}': ${tag.value}`)
-                            message[tag.name] = tag.value
+                            message.AssignmentNonce = tag.value
                         }
                     } else if (tag.name === 'Epoch' && assignmentEpoch === undefined) {
                         const parsedValue = parseInt(tag.value, 10)
@@ -555,7 +566,7 @@ export class AoReadState {
                         isAssignment: message.isAssignment,
                         processId: ctx.processId,
                         epoch: message.Epoch,
-                        nonce: message.Nonce
+                        nonce: message.AssignmentNonce
                     })
 
                     if (exists) {
