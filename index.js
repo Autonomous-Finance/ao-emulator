@@ -227,7 +227,6 @@ async function fetchAndProcessMessages(fromNonceOverride) {
                 let messageToSend = { ...message };
                 console.log(`[fetchAndProcessMessages] Processing message (ID: ${messageToSend.Id}, Nonce: ${messageToSend.AssignmentNonce}) for ${messageToSend.Target}...`);
 
-                console.log(`[DEBUG] Original message ${message.Id} AssignmentNonce: ${message.AssignmentNonce}`);
                 if (messageToSend.Tags && Array.isArray(messageToSend.Tags)) {
                     messageToSend = flattenMessageTags(messageToSend);
                 }
