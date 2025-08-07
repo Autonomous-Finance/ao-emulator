@@ -705,7 +705,8 @@ async function initializeAndPrepareAos() {
 
 const app = express();
 app.use(cors()); // Enable CORS for all routes
-app.use(express.json());
+app.use(express.json({ limit: '100mb' })); // Increase JSON body size limit to 50MB
+app.use(express.urlencoded({ limit: '100mb', extended: true })); // Increase URL-encoded body size limit
 
 // --- Helper function to flatten Tags ---
 function flattenTags(tagsArray) {
