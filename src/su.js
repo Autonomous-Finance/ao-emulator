@@ -118,6 +118,7 @@ export class AoReadState {
 
     async findMessageBefore({ messageId, deepHash, isAssignment, processId, epoch, nonce }) {
         if (!this.cacheEnabled) return false
+        // Use assignment nonce for cache key - this ensures proper forwarding order
         const key = `${processId}:${epoch}:${nonce}`
         return cache.evaluations.has(key)
     }
@@ -329,13 +330,22 @@ export class AoReadState {
             // Parse assignment tags to get metadata
             const assignmentTags = assignmentData?.tags ? parseTags(assignmentData.tags) : {}
 
+            // Extract assignment nonce/epoch first (these take priority for forwarding)
+            const assignmentNonce = assignmentTags.Nonce ? parseInt(assignmentTags.Nonce, 10) : undefined
+            const assignmentEpoch = assignmentTags.Epoch ? parseInt(assignmentTags.Epoch, 10) : undefined
+
+            // Log nonce precedence for debugging
+            if (assignmentNonce !== undefined) {
+                logger.debug(`Using assignment nonce ${assignmentNonce} for message ${messageData.id}`)
+            }
+
             // Extract basic message properties from node.message
             const message = {
                 Id: messageData.id,
                 // Timestamp from assignment tags, default to 0 or handle differently?
                 Timestamp: assignmentTags.Timestamp ? parseInt(assignmentTags.Timestamp, 10) : undefined,
                 Owner: messageData.owner?.address, // Get address from owner object
-                Tags: messageData.tags || [],
+                Tags: messageData.tags || [], // Keep original message tags array intact
                 // Block-Height from assignment tags
                 'Block-Height': assignmentTags['Block-Height'] ? parseInt(assignmentTags['Block-Height'], 10) : undefined,
                 Data: messageData.data,
@@ -346,33 +356,58 @@ export class AoReadState {
                 'Hash-Chain': assignmentTags['Hash-Chain'],
                 // Cron - needs clarification where this comes from in the new structure
                 Cron: messageData.cron || assignmentTags.Cron || false, // Assuming it might be in message or tags
-                // Nonce from assignment tags
-                Nonce: assignmentTags.Nonce ? parseInt(assignmentTags.Nonce, 10) : undefined,
-                // Epoch from assignment tags
-                Epoch: assignmentTags.Epoch ? parseInt(assignmentTags.Epoch, 10) : undefined,
+                // Nonce from assignment tags (priority for forwarding)
+                Nonce: assignmentNonce,
+                // Epoch from assignment tags (priority for forwarding)
+                Epoch: assignmentEpoch,
                 // How to determine deepHash and isAssignment from the new structure?
                 // These might need specific tags or logic based on the presence of assignmentData
                 deepHash: assignmentTags.deepHash, // Placeholder - assuming a tag exists
                 isAssignment: !!assignmentData // Mark as assignment if assignmentData exists
             }
 
-            // Add all tags as key-value pairs
+            // Add assignment nonce/epoch to Tags array only under their own keys (never as "Nonce" or "Epoch")
+            if (assignmentNonce !== undefined) {
+                // Always add assignment nonce under Assignment-Nonce key to preserve distinction
+                message.Tags.push({ name: 'Assignment-Nonce', value: assignmentNonce.toString() })
+            }
+
+            if (assignmentEpoch !== undefined) {
+                // Always add assignment epoch under Assignment-Epoch key to preserve distinction
+                message.Tags.push({ name: 'Assignment-Epoch', value: assignmentEpoch.toString() })
+            }
+
+            // Add message tags as top-level properties (for backward compatibility)
+            // but only if assignment values don't exist for Nonce/Epoch
             if (messageData.tags) {
                 messageData.tags.forEach(tag => {
-                    // Note: This might overwrite existing properties if tag names conflict
-                    // Ensure numeric fields are parsed as numbers
-                    if (['Nonce', 'Timestamp', 'Block-Height', 'Epoch'].includes(tag.name)) {
+                    if (tag.name === 'Nonce' && assignmentNonce === undefined) {
                         const parsedValue = parseInt(tag.value, 10)
-                        // Only assign if parsing is successful, otherwise keep original or let validation handle it
                         if (!isNaN(parsedValue)) {
                             message[tag.name] = parsedValue
                         } else {
-                            // Optionally log a warning if parsing fails for a numeric field
-                            logger.warn(`Failed to parse numeric value for tag '${tag.name}': ${tag.value}`)
-                            // Assign the original string value if parsing fails, Zod will catch it
+                            logger.warn(`Failed to parse numeric value for message tag '${tag.name}': ${tag.value}`)
                             message[tag.name] = tag.value
                         }
-                    } else {
+                    } else if (tag.name === 'Epoch' && assignmentEpoch === undefined) {
+                        const parsedValue = parseInt(tag.value, 10)
+                        if (!isNaN(parsedValue)) {
+                            message[tag.name] = parsedValue
+                        } else {
+                            logger.warn(`Failed to parse numeric value for message tag '${tag.name}': ${tag.value}`)
+                            message[tag.name] = tag.value
+                        }
+                    } else if (['Timestamp', 'Block-Height'].includes(tag.name)) {
+                        // For other numeric fields, allow message tags to override
+                        const parsedValue = parseInt(tag.value, 10)
+                        if (!isNaN(parsedValue)) {
+                            message[tag.name] = parsedValue
+                        } else {
+                            logger.warn(`Failed to parse numeric value for tag '${tag.name}': ${tag.value}`)
+                            message[tag.name] = tag.value
+                        }
+                    } else if (!['Nonce', 'Epoch'].includes(tag.name)) {
+                        // For non-nonce/epoch fields, add normally
                         message[tag.name] = tag.value
                     }
                 })
