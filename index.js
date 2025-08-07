@@ -21,6 +21,8 @@ function parseCliArgs(argv) {
                 cliArgs.LOAD_FROM_CHECKPOINT_CLI = true;
             } else if (keyWithValue === 'load-from-scratch') {
                 cliArgs.LOAD_FROM_SCRATCH_CLI = true;
+            } else if (keyWithValue === 'allow-write') {
+                cliArgs.ALLOW_WRITE_CLI = true;
             } else if (value !== undefined && value !== '') { // For key=value pairs
                 if (keyWithValue === 'port') cliArgs.PORT_CLI = value;
                 else if (keyWithValue === 'module-id') cliArgs.AOS_MODULE_ID_CLI = value;
@@ -113,6 +115,10 @@ if (CHECKPOINT_TX_ID) {
 // LOAD_FROM_SCRATCH (Boolean) - New configuration option
 const LOAD_FROM_SCRATCH = cliArgs.LOAD_FROM_SCRATCH_CLI !== undefined ? cliArgs.LOAD_FROM_SCRATCH_CLI :
     (process.env.LOAD_FROM_SCRATCH !== undefined ? process.env.LOAD_FROM_SCRATCH === 'true' : false);
+
+// ALLOW_WRITE (Boolean) - Allow writing to the process instead of dry-run mode
+const ALLOW_WRITE = cliArgs.ALLOW_WRITE_CLI !== undefined ? cliArgs.ALLOW_WRITE_CLI :
+    (process.env.ALLOW_WRITE !== undefined ? process.env.ALLOW_WRITE === 'true' : false);
 
 // Warning if LOAD_FROM_SCRATCH is used with conflicting checkpoint flags
 if (LOAD_FROM_SCRATCH && (CHECKPOINT_TX_ID || LOAD_FROM_CHECKPOINT)) {
@@ -787,17 +793,21 @@ app.post('/dry-run', async (req, res) => {
         const processedMessage = flattenMessageTags(message);
         // console.log('Processed message after flattening:', JSON.stringify(processedMessage, null, 2));
 
-        console.log('sending message to aos.send...');
+        console.log(`sending message to aos.send... (ALLOW_WRITE: ${ALLOW_WRITE})`);
         const startTime = Date.now();
         // console.log('message:', processedMessage);
-        processedMessage.Owner = 'DRY-RUN'
-        processedMessage.From = 'DRY-RUN'
-        processedMessage.Tags.From = 'DRY-RUN'
-        processedMessage.Tags.Owner = 'DRY-RUN'
-        // processedMessage['From-Process'] = 'DRY-RUN'
-        // processedMessage.Tags['From-Process'] = 'DRY-RUN'
 
-        const result = await aos.send(processedMessage, globalProcessEnv, false);
+        // Only override owner/from fields if write mode is disabled
+        if (!ALLOW_WRITE) {
+            processedMessage.Owner = 'DRY-RUN'
+            processedMessage.From = 'DRY-RUN'
+            processedMessage.Tags.From = 'DRY-RUN'
+            processedMessage.Tags.Owner = 'DRY-RUN'
+            // processedMessage['From-Process'] = 'DRY-RUN'
+            // processedMessage.Tags['From-Process'] = 'DRY-RUN'
+        }
+
+        const result = await aos.send(processedMessage, globalProcessEnv, !ALLOW_WRITE);
         const duration = Date.now() - startTime;
         console.log(`Dry-run for message to ${message.Target} completed in ${duration}ms.`);
 
@@ -810,7 +820,8 @@ app.post('/dry-run', async (req, res) => {
             Error: result.Error,
             Assignments: result.Assignments,
             GasUsed: result.GasUsed,
-            Emulated: true,
+            Emulated: !ALLOW_WRITE,
+            WriteMode: ALLOW_WRITE,
             ProcessId: PROCESS_ID_TO_MONITOR
         };
 
@@ -866,6 +877,7 @@ async function startServer() {
             console.log(`  Loader DISABLE_METERING: ${LOADER_DISABLE_METERING}`);
             console.log(`  Load from Checkpoint : ${LOAD_FROM_CHECKPOINT}`);
             console.log(`  Load from Scratch    : ${LOAD_FROM_SCRATCH}`);
+            console.log(`  Allow Write Mode     : ${ALLOW_WRITE}`);
             if (CHECKPOINT_TX_ID && !LOAD_FROM_SCRATCH) {
                 console.log(`  Specific Checkpoint TX : ${CHECKPOINT_TX_ID}`);
             }
