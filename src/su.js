@@ -36,6 +36,13 @@ const ctxSchema = z.object({
 const trimSlash = (url) => url.replace(/\/$/, '')
 const parseTags = (tags) => tags.reduce((acc, tag) => ({ ...acc, [tag.name]: tag.value }), {})
 
+// Per-request timeout configuration
+const SU_DEFAULT_REQUEST_TIMEOUT_MS = 30000
+const SU_REQUEST_TIMEOUT_MS = (() => {
+    const v = Number(process.env?.SU_REQUEST_TIMEOUT_MS)
+    return Number.isFinite(v) && v > 0 ? v : SU_DEFAULT_REQUEST_TIMEOUT_MS
+})()
+
 // In-memory storage for caching
 const cache = {
     evaluations: new Map(),
@@ -56,6 +63,36 @@ export class AoReadState {
         this.logger = logger
         this.cacheEnabled = cacheEnabled
         this.suUrl = suUrl
+    }
+
+    // Internal helper: fetch with timeout returning Response
+    async fetchWithTimeout(url, options = {}, timeoutMs = SU_REQUEST_TIMEOUT_MS) {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(new Error(`Request timed out after ${timeoutMs} ms`)), timeoutMs)
+        try {
+            const res = await this.fetch(url, { ...options, signal: controller.signal })
+            return res
+        } finally {
+            clearTimeout(timeoutId)
+        }
+    }
+
+    async fetchJsonWithTimeout(url, options = {}, timeoutMs = SU_REQUEST_TIMEOUT_MS) {
+        const res = await this.fetchWithTimeout(url, options, timeoutMs)
+        if (!res.ok) {
+            const body = await res.text().catch(() => '')
+            throw new Error(`HTTP ${res.status} ${res.statusText} for ${url}\n${body}`)
+        }
+        return res.json()
+    }
+
+    async fetchTextWithTimeout(url, options = {}, timeoutMs = SU_REQUEST_TIMEOUT_MS) {
+        const res = await this.fetchWithTimeout(url, options, timeoutMs)
+        if (!res.ok) {
+            const body = await res.text().catch(() => '')
+            throw new Error(`HTTP ${res.status} ${res.statusText} for ${url}\n${body}`)
+        }
+        return res.text()
     }
 
     // Helper method to get logger with context
@@ -96,8 +133,9 @@ export class AoReadState {
         if (this.cacheEnabled && cache.messageData.has(messageId)) {
             return cache.messageData.get(messageId)
         }
-        const response = await this.fetch(`/data/${messageId}`)
-        const data = await response.text()
+        const base = this.suUrl ? trimSlash(this.suUrl) : ''
+        const url = `${base}/data/${messageId}`
+        const data = await this.fetchTextWithTimeout(url, { method: 'GET', headers: { 'Content-Type': 'text/plain' } })
         if (this.cacheEnabled) {
             cache.messageData.set(messageId, data)
         }
@@ -108,8 +146,9 @@ export class AoReadState {
         if (this.cacheEnabled && cache.messageMeta.has(messageId)) {
             return cache.messageMeta.get(messageId)
         }
-        const response = await this.fetch(`/meta/${messageId}`)
-        const meta = await response.json()
+        const base = this.suUrl ? trimSlash(this.suUrl) : ''
+        const url = `${base}/meta/${messageId}`
+        const meta = await this.fetchJsonWithTimeout(url, { method: 'GET', headers: { 'Content-Type': 'application/json' } })
         if (this.cacheEnabled) {
             cache.messageMeta.set(messageId, meta)
         }
@@ -331,8 +370,8 @@ export class AoReadState {
             const assignmentTags = assignmentData?.tags ? parseTags(assignmentData.tags) : {}
 
             // Debug: Log assignment data structure
-            logger.debug(`Assignment data for message ${messageData.id}:`, JSON.stringify(assignmentData, null, 2))
-            logger.debug(`Parsed assignment tags:`, JSON.stringify(assignmentTags, null, 2))
+            // logger.debug(`Assignment data for message ${messageData.id}:`, JSON.stringify(assignmentData, null, 2))
+            // logger.debug(`Parsed assignment tags:`, JSON.stringify(assignmentTags, null, 2))
 
             // Extract assignment nonce/epoch first (these take priority for forwarding)
             // Try both 'Nonce' and 'Ordinate' as they might be used interchangeably
@@ -476,7 +515,7 @@ export class AoReadState {
             logger.info('Making request to:', requestUrl)
             logger.info('Context:', JSON.stringify(ctx, null, 2))
 
-            const response = await this.fetch(requestUrl, {
+            const response = await this.fetchWithTimeout(requestUrl, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json'
@@ -531,7 +570,7 @@ export class AoReadState {
                     // Load message data if needed
                     if (message.Data === undefined) {
                         const data = await this.loadTransactionData(message.Id)
-                        message.Data = await data.text()
+                        message.Data = data
                     }
 
                     // Validate message against schema

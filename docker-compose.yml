@@ -60,8 +60,6 @@ services:
   # Agent Factory Process
   aos-agent-factory:
     <<: *service-base
-    deploy:
-      replicas: 1
     environment:
       <<: *env-base
       PROCESS_ID_TO_MONITOR: x_WysdFwKD_buywRK9qLA7IexdlsvVTVq6ESWMRCzFY
@@ -78,8 +76,6 @@ services:
   # Permaweb Index Process
   aos-permaweb-index:
     <<: *service-base
-    deploy:
-      replicas: 1
     environment:
       <<: *env-base
       PROCESS_ID_TO_MONITOR: rxxU4g-7tUHGvF28W2l53hxarpbaFR4NaSnOaxx6MIE
@@ -96,8 +92,6 @@ services:
   #Token Locker Process
   aos-token-locker:
     <<: *service-base
-    deploy:
-      replicas: 1
     environment:
       <<: *env-base
       PROCESS_ID_TO_MONITOR: jxiKuu_21_KjNga8KxH1h8fJeoCl9DzcEjGBiKN66DY
@@ -114,8 +108,6 @@ services:
   # Permaweb Index Token Process
   aos-permaweb-index-token:
     <<: *service-base
-    deploy:
-      replicas: 1
     environment:
       <<: *env-base
       PROCESS_ID_TO_MONITOR: 4hXj_E-5fAKmo4E8KjgQvuDJKAFk9P2grhycVmISDLs
@@ -132,8 +124,6 @@ services:
   # Registry Process
   aos-registry:
     <<: *service-base
-    deploy:
-      replicas: 1
     environment:
       <<: *env-base
       PROCESS_ID_TO_MONITOR: iZuNCnURIQHazG9cIui2B5FdQzWRE8TMa28i6nHr5ic
@@ -168,8 +158,6 @@ services:
   # Portfolio Agent Factory Process
   aos-portfolio-agent-factory:
     <<: *service-base
-    deploy:
-      replicas: 1
     environment:
       <<: *env-base
       PROCESS_ID_TO_MONITOR: OF3TuQgd3RkTb9HSs_V94vVPFeRXi1h0EGJhSgda7OI
@@ -186,8 +174,6 @@ services:
   # FLP Factory Process
   aos-flp-factory:
     <<: *service-base
-    deploy:
-      replicas: 1
     environment:
       <<: *env-base
       PROCESS_ID_TO_MONITOR: It-_AKlEfARBmJdbJew1nG9_hIaZt0t20wQc28mFGBE
@@ -241,8 +227,6 @@ services:
   # Botega FLP Process
   aos-botega-flp:
     <<: *service-base
-    deploy:
-      replicas: 2
     environment:
       <<: *env-base
       PROCESS_ID_TO_MONITOR: UcBPqkaVI7W4I_YMznrt2JUoyc_7TScCdZWOOSBvMSU
@@ -259,8 +243,6 @@ services:
   # Auction Factory Staging Process
   aos-auction-factory-staging:
     <<: *service-base
-    deploy:
-      replicas: 1
     environment:
       <<: *env-base
       PROCESS_ID_TO_MONITOR: q1aypD57W2L2mJiAN98gwKRWt6R8WU0waFFjDUPB00A
@@ -273,7 +255,38 @@ services:
       - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.interval=30s
       - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.timeout=3s
       - traefik.http.services.auction-factory-staging.loadbalancer.strategy=wrr
-  
+
+  aos-ao-token:
+    <<: *service-base
+    environment:
+      <<: *env-base
+      PROCESS_ID_TO_MONITOR: 0syT13r0s0tgPmIed95bJnuSqaD29HQNN8D3ElLSrsc
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.auction-factory-staging.rule=Query(`process-id`,`0syT13r0s0tgPmIed95bJnuSqaD29HQNN8D3ElLSrsc`)
+      - traefik.http.routers.auction-factory-staging.entrypoints=web
+      - traefik.http.services.auction-factory-staging.loadbalancer.server.port=8080
+      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.auction-factory-staging.loadbalancer.strategy=wrr
+
+
+  aos-war-token:
+    <<: *service-base
+    environment:
+      <<: *env-base
+      PROCESS_ID_TO_MONITOR: xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.auction-factory-staging.rule=Query(`process-id`,`xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10`)
+      - traefik.http.routers.auction-factory-staging.entrypoints=web
+      - traefik.http.services.auction-factory-staging.loadbalancer.server.port=8080
+      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.auction-factory-staging.loadbalancer.strategy=wrr
+    
 
   # ─── monitoring stack ─────────────────────────────────────────────
   prometheus:

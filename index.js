@@ -4,6 +4,7 @@ import { AoReadState } from './src/su.js';
 import { getCheckpointTx, fetchCheckpoint, findCheckpointBeforeOrEqualToNonce, prepareSpecificCheckpoint } from './src/checkpoint.js';
 import fs from 'fs'; // Added fs import for file operations
 import cors from 'cors'; // Add cors import
+import { initDatabase, saveProcessResult } from './src/db.js';
 
 // --- Helper function to parse CLI Args (simple version) ---
 function parseCliArgs(argv) {
@@ -23,6 +24,8 @@ function parseCliArgs(argv) {
                 cliArgs.LOAD_FROM_SCRATCH_CLI = true;
             } else if (keyWithValue === 'allow-write') {
                 cliArgs.ALLOW_WRITE_CLI = true;
+            } else if (keyWithValue === 'persist-results') {
+                cliArgs.PERSIST_RESULTS_CLI = true;
             } else if (value !== undefined && value !== '') { // For key=value pairs
                 if (keyWithValue === 'port') cliArgs.PORT_CLI = value;
                 else if (keyWithValue === 'module-id') cliArgs.AOS_MODULE_ID_CLI = value;
@@ -32,6 +35,7 @@ function parseCliArgs(argv) {
                 else if (keyWithValue === 'su-url') cliArgs.SU_URL_CLI = value;
                 else if (keyWithValue === 'forward-to-nonce') cliArgs.FORWARD_TO_NONCE_CLI = value;
                 else if (keyWithValue === 'checkpoint-tx') cliArgs.CHECKPOINT_TX_ID_CLI = value;
+                else if (keyWithValue === 'db-path') cliArgs.DB_PATH_CLI = value;
             }
         }
     });
@@ -82,6 +86,11 @@ if (isNaN(MESSAGE_POLL_INTERVAL_MS) || MESSAGE_POLL_INTERVAL_MS <= 0) {
 // SU_URL
 const DEFAULT_SU_URL = 'https://su-router.ao-testnet.xyz'; // Default SU URL
 const SU_URL = cliArgs.SU_URL_CLI || process.env.SU_URL || DEFAULT_SU_URL;
+
+// Result persistence (SQLite) flag and DB path
+const PERSIST_RESULTS = cliArgs.PERSIST_RESULTS_CLI !== undefined ? cliArgs.PERSIST_RESULTS_CLI :
+    (process.env.PERSIST_RESULTS !== undefined ? process.env.PERSIST_RESULTS === 'true' : false);
+const DB_PATH = cliArgs.DB_PATH_CLI || process.env.DB_PATH || 'aos-results.db';
 
 // LOADER_UNSAFE_MEMORY (Boolean)
 const LOADER_UNSAFE_MEMORY = cliArgs.LOADER_UNSAFE_MEMORY !== undefined ? cliArgs.LOADER_UNSAFE_MEMORY :
@@ -137,6 +146,14 @@ if (isNaN(FETCH_MESSAGES_TIMEOUT_MS) || FETCH_MESSAGES_TIMEOUT_MS <= 0) {
     console.warn(`Invalid FETCH_MESSAGES_TIMEOUT_MS value '${process.env.FETCH_MESSAGES_TIMEOUT_MS}'. Falling back to default ${DEFAULT_FETCH_MESSAGES_TIMEOUT_MS}.`);
 }
 
+// Timeout (in ms) for sending a message into the local AOS engine. Prevents
+// an individual send from blocking the polling loop indefinitely.
+const DEFAULT_SEND_TIMEOUT_MS = 60000; // 60 seconds
+const SEND_TIMEOUT_MS = process.env.SEND_TIMEOUT_MS ? Number(process.env.SEND_TIMEOUT_MS) : DEFAULT_SEND_TIMEOUT_MS;
+if (isNaN(SEND_TIMEOUT_MS) || SEND_TIMEOUT_MS <= 0) {
+    console.warn(`Invalid SEND_TIMEOUT_MS value '${process.env.SEND_TIMEOUT_MS}'. Falling back to default ${DEFAULT_SEND_TIMEOUT_MS}.`);
+}
+
 // --- Helper function to add jitter ---
 function applyJitter(intervalMs, maxJitterMs = 5000) {
     const jitter = Math.random() * maxJitterMs;
@@ -155,6 +172,7 @@ let aoReadState = null; // AoReadState instance
 
 // ---- Watchdog / health tracking ----
 let lastMessageFetchTime = Date.now();
+let lastPollStartTime = 0;
 
 // Consider the poller stalled if no successful fetch has happened for this long.
 const POLLING_STALL_THRESHOLD_MS = process.env.POLLING_STALL_THRESHOLD_MS ?
@@ -238,10 +256,31 @@ async function fetchAndProcessMessages(fromNonceOverride) {
 
                 try {
                     // console.log(`[fetchAndProcessMessages] messageToSend:`, messageToSend);
-                    const r = await aos.send(messageToSend, globalProcessEnv);
+                    const r = await withTimeout(
+                        aos.send(messageToSend, globalProcessEnv),
+                        SEND_TIMEOUT_MS,
+                        'aos.send'
+                    );
                     // console.log(`[fetchAndProcessMessages] aos.send() result:`, r);
                     lastProcessedNonce = messageToSend.AssignmentNonce; // Update nonce only after successful send
                     console.log(`[fetchAndProcessMessages] Successfully processed message ID: ${messageToSend.Id}. New lastProcessedNonce: ${lastProcessedNonce}`);
+
+                    // Persist result to SQLite (if enabled)
+                    if (PERSIST_RESULTS) {
+                        try {
+                            saveProcessResult({
+                                messageId: messageToSend.Id,
+                                processId: PROCESS_ID_TO_MONITOR,
+                                target: messageToSend.Target,
+                                assignmentNonce: messageToSend.AssignmentNonce,
+                                result: r,
+                                emulated: false,
+                                writeMode: true
+                            });
+                        } catch (dbErr) {
+                            console.error('[fetchAndProcessMessages] Failed to persist result to DB:', dbErr);
+                        }
+                    }
 
                     // Print result of the last message when nonce limit is reached
                     if (FORWARD_TO_NONCE_LIMIT !== null && lastProcessedNonce >= FORWARD_TO_NONCE_LIMIT) {
@@ -293,6 +332,7 @@ async function pollForNewMessages() {
     }
 
     isPollingMessages = true;
+    lastPollStartTime = Date.now();
     // console.log('[pollForNewMessages] Starting poll cycle...');
     try {
         await fetchAndProcessMessages(); // Uses global lastProcessedNonce
@@ -843,6 +883,35 @@ app.post('/dry-run', async (req, res) => {
             }
         });
 
+        // Persist dry-run/write result as well (if enabled)
+        if (PERSIST_RESULTS) {
+            try {
+                const messageIdForSave = processedMessage.Id
+                    || processedMessage?.Tags?.Id
+                    || processedMessage?.Tags?.['Message-Id']
+                    || `DRYRUN-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+                const assignmentNonceForSave = typeof processedMessage.AssignmentNonce === 'number'
+                    ? processedMessage.AssignmentNonce
+                    : (() => {
+                        const raw = processedMessage?.Tags?.['Assignment-Nonce'];
+                        const parsed = raw != null ? parseInt(raw, 10) : NaN;
+                        return Number.isFinite(parsed) ? parsed : null;
+                    })();
+
+                saveProcessResult({
+                    messageId: messageIdForSave,
+                    processId: PROCESS_ID_TO_MONITOR,
+                    target: processedMessage.Target,
+                    assignmentNonce: assignmentNonceForSave,
+                    result,
+                    emulated: !ALLOW_WRITE,
+                    writeMode: ALLOW_WRITE
+                });
+            } catch (dbErr) {
+                console.error('[/dry-run] Failed to persist result to DB:', dbErr);
+            }
+        }
+
         res.json(responsePayload);
 
     } catch (error) {
@@ -859,13 +928,27 @@ app.get('/health', (req, res) => {
         return res.status(200).json({ status: 'BUSY_LOADING_STATE', message: 'aoslocal is performing a full state load.' });
     }
     if (isPollingMessages) {
-        return res.status(200).json({ status: 'BUSY_POLLING_MESSAGES', message: 'aoslocal is polling for new messages.' });
+        const pollElapsed = Date.now() - (lastPollStartTime || Date.now());
+        return res.status(200).json({ status: 'BUSY_POLLING_MESSAGES', message: 'aoslocal is polling for new messages.', millisSincePollStart: pollElapsed });
     }
     const elapsed = Date.now() - lastMessageFetchTime;
     res.status(200).json({ status: 'OK', message: 'aoslocal initialized and idle or actively polling.', millisSinceLastMessageFetch: elapsed });
 });
 
 async function startServer() {
+    // Initialize SQLite database (only if persistence is enabled)
+    if (PERSIST_RESULTS) {
+        try {
+            initDatabase(DB_PATH);
+            console.log(`[database] SQLite initialized at: ${DB_PATH}`);
+        } catch (dbInitErr) {
+            console.error('[database] Failed to initialize SQLite database:', dbInitErr);
+            process.exit(1);
+        }
+    } else {
+        console.log('[database] Result persistence disabled. To enable, start with --persist-results or set PERSIST_RESULTS=true');
+    }
+
     // Start Express server immediately so that the health-check port is open
     app.listen(PORT, () => {
         console.log('-------------------------------------------------------');
@@ -889,6 +972,7 @@ async function startServer() {
             console.log(`  Load from Checkpoint : ${LOAD_FROM_CHECKPOINT}`);
             console.log(`  Load from Scratch    : ${LOAD_FROM_SCRATCH}`);
             console.log(`  Allow Write Mode     : ${ALLOW_WRITE}`);
+            console.log(`  Persist Results      : ${PERSIST_RESULTS}`);
             if (CHECKPOINT_TX_ID && !LOAD_FROM_SCRATCH) {
                 console.log(`  Specific Checkpoint TX : ${CHECKPOINT_TX_ID}`);
             }
