@@ -6,7 +6,7 @@ export async function fetchCheckpoint(tx) {
     if (fs.existsSync(fileName)) {
       return await readLargeFile(fileName)
     }
-    const response = await fetch(`https://arweave.net/${tx}`)
+    const response = await fetch(`https://g8way.io/${tx}`)
 
     if (!response.ok) {
       throw new Error(`Failed to fetch: ${tx} : ${response.statusText}`)
