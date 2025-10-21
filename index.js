@@ -809,7 +809,7 @@ function formatAOS(ctx) {
         Timestamp: (new Date().getTime()).toString(),
         Tags: Object
             .keys(ctx.msg)
-            .filter(k => !["Target", "Owner", "Data", "Anchor", "Tags"].includes(k))
+            .filter(k => !["Target", "Owner", "Data", "Anchor", "Tags", "Id"].includes(k))
             .map(k => ({ name: k, value: ctx.msg[k] }))
     }
 
