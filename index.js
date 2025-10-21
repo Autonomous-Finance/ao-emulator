@@ -101,7 +101,12 @@ const LOADER_DISABLE_METERING = cliArgs.LOADER_DISABLE_METERING !== undefined ? 
     (process.env.LOADER_DISABLE_METERING !== undefined ? process.env.LOADER_DISABLE_METERING === 'true' : false);
 
 // LOAD_FROM_CHECKPOINT (Boolean)
-const LOAD_FROM_CHECKPOINT = cliArgs.LOAD_FROM_CHECKPOINT_CLI || process.env.LOAD_FROM_CHECKPOINT === 'true' || false; // Default to false
+const LOAD_FROM_CHECKPOINT =
+    cliArgs.LOAD_FROM_CHECKPOINT_CLI !== undefined
+        ? cliArgs.LOAD_FROM_CHECKPOINT_CLI
+        : (process.env.LOAD_FROM_CHECKPOINT !== undefined
+            ? process.env.LOAD_FROM_CHECKPOINT === 'true'
+            : true); // Default to true
 
 // FORWARD_TO_NONCE (Number, optional)
 const argForwardToNonce = cliArgs.FORWARD_TO_NONCE_CLI || process.env.FORWARD_TO_NONCE;
