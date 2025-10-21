@@ -775,7 +775,7 @@ function flattenMessageTags(message) {
     // If Tags is an array, flatten it
     if (Array.isArray(message.Tags)) {
         message.Tags.forEach(tag => {
-            if (tag && tag.name && tag.value !== undefined) {
+            if (tag && tag.name && tag.value !== undefined && tag.name !== 'Id') {
                 // Special handling for Assignment-Nonce - set it as AssignmentNonce property
                 if (tag.name === 'Assignment-Nonce') {
                     const parsedValue = parseInt(tag.value, 10);
