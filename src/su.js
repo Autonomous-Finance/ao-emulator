@@ -456,7 +456,7 @@ export class AoReadState {
                             logger.warn(`Failed to parse numeric value for tag '${tag.name}': ${tag.value}`)
                             message[tag.name] = tag.value
                         }
-                    } else if (!['Nonce', 'Epoch'].includes(tag.name)) {
+                    } else if (!['Nonce', 'Epoch', 'Id'].includes(tag.name)) {
                         // For non-nonce/epoch fields, add normally
                         message[tag.name] = tag.value
                     }
