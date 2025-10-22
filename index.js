@@ -162,7 +162,8 @@ if (isNaN(SEND_TIMEOUT_MS) || SEND_TIMEOUT_MS <= 0) {
 // Timeout for waiting until idle before processing /dry-run
 const DEFAULT_DRY_RUN_WAIT_TIMEOUT_MS = 30000;
 const DRY_RUN_WAIT_TIMEOUT_MS = process.env.DRY_RUN_WAIT_TIMEOUT_MS ? Number(process.env.DRY_RUN_WAIT_TIMEOUT_MS) : DEFAULT_DRY_RUN_WAIT_TIMEOUT_MS;
-if (isNaN(DRY_RUN_WAIT_TIMEOUT_MS) || DRY_RUN_WAIT_TIMEOUT_MS <= 0) {
+function isValidPositiveNumber(n) { return Number.isFinite(n) && n > 0; }
+if (!isValidPositiveNumber(DRY_RUN_WAIT_TIMEOUT_MS)) {
     console.warn(`Invalid DRY_RUN_WAIT_TIMEOUT_MS value '${process.env.DRY_RUN_WAIT_TIMEOUT_MS}'. Falling back to default ${DEFAULT_DRY_RUN_WAIT_TIMEOUT_MS}.`);
 }
 
@@ -187,10 +188,10 @@ function applyJitter(intervalMs, maxJitterMs = 5000) {
 let aos = null; // aoslocal instance
 let isPerformingFullLoad = false;
 let isPollingMessages = false;
+let isDryRunInProgress = false;
 let lastProcessedNonce = -1; // Tracks the nonce of the last successfully processed message
 let globalProcessEnv = {};
 let aoReadState = null; // AoReadState instance
-let isDryRunInProgress = false; // Prevent poll/load during dry-runs
 
 // ---- Watchdog / health tracking ----
 let lastMessageFetchTime = Date.now();
@@ -258,6 +259,7 @@ async function fetchAndProcessMessages(fromNonceOverride) {
 
         if (extraMessages && extraMessages.length > 0) {
             console.log(`[fetchAndProcessMessages] Fetched ${extraMessages.length} additional messages to process.`);
+            const startNonceBefore = lastProcessedNonce;
             for (const message of extraMessages) {
                 if (FORWARD_TO_NONCE_LIMIT !== null && message.AssignmentNonce > FORWARD_TO_NONCE_LIMIT) {
                     console.log(`[fetchAndProcessMessages] Message (ID: ${message.Id}, Nonce: ${message.AssignmentNonce}) exceeds FORWARD_TO_NONCE_LIMIT (${FORWARD_TO_NONCE_LIMIT}). Stopping processing for this batch.`);
@@ -333,8 +335,26 @@ async function fetchAndProcessMessages(fromNonceOverride) {
                 }
             }
             console.log('[fetchAndProcessMessages] All fetched messages in this batch processed (or limit reached).');
+            // Refresh dry-run snapshot if using snapshot strategy and we advanced
+            if ((process.env.DRY_RUN_STRATEGY || 'snapshot') === 'snapshot' && typeof aos?.cloneDryRunSnapshot === 'function' && lastProcessedNonce !== startNonceBefore) {
+                try {
+                    const r = await aos.cloneDryRunSnapshot();
+                    console.log(`[dry-run] Snapshot refreshed after ingestion. success=${r?.success} hasSnapshot=${r?.hasSnapshot}`);
+                } catch (e) {
+                    console.warn('[dry-run] Failed to refresh snapshot after ingestion:', e?.message || e);
+                }
+            }
         } else {
             console.log('[fetchAndProcessMessages] No new messages found or fetched from SU.');
+            // Optionally refresh snapshot when idle
+            if ((process.env.DRY_RUN_STRATEGY || 'snapshot') === 'snapshot' && typeof aos?.cloneDryRunSnapshot === 'function') {
+                try {
+                    const r = await aos.cloneDryRunSnapshot();
+                    console.log(`[dry-run] Snapshot refreshed when idle. success=${r?.success} hasSnapshot=${r?.hasSnapshot}`);
+                } catch (e) {
+                    console.warn('[dry-run] Failed to refresh snapshot on idle:', e?.message || e);
+                }
+            }
         }
     } catch (fetchProcessError) {
         console.error(`[fetchAndProcessMessages] Error fetching or processing messages from SU (fromNonce ${effectiveFromNonce}):`, fetchProcessError);
@@ -346,7 +366,7 @@ async function pollForNewMessages() {
         // console.log('[pollForNewMessages] aos not initialized, skipping poll.'); // Can be noisy
         return;
     }
-    if (isPerformingFullLoad || isPollingMessages || isDryRunInProgress) {
+    if (isPerformingFullLoad || isPollingMessages) {
         // console.log('[pollForNewMessages] Full load or another poll in progress, skipping.'); // Can be noisy
         return;
     }
@@ -636,6 +656,15 @@ async function initialLoadAndCatchup() {
     } finally {
         isPerformingFullLoad = false;
         console.log('[initialLoadAndCatchup] Initial state load and message catch-up process finished.');
+        // Create initial snapshot for dry-run if configured
+        if ((process.env.DRY_RUN_STRATEGY || 'snapshot') === 'snapshot' && typeof aos?.cloneDryRunSnapshot === 'function') {
+            try {
+                const r = await aos.cloneDryRunSnapshot();
+                console.log(`[dry-run] Initial snapshot created. success=${r?.success} hasSnapshot=${r?.hasSnapshot}`);
+            } catch (e) {
+                console.warn('[dry-run] Failed to create initial snapshot:', e?.message || e);
+            }
+        }
     }
 }
 
@@ -644,7 +673,7 @@ async function performPeriodicFullLoad() {
         // console.warn('[performPeriodicFullLoad] aos not initialized, skipping periodic load.'); // Can be noisy
         return;
     }
-    if (isPerformingFullLoad || isPollingMessages || isDryRunInProgress) { // Don't run if a poll or dry-run is active
+    if (isPerformingFullLoad || isPollingMessages) { // Don't run if a poll is active either, to be safe
         // console.log('[performPeriodicFullLoad] Another load or poll in progress, skipping.'); // Can be noisy
         return;
     }
@@ -756,7 +785,7 @@ async function initializeAndPrepareAos() {
                 console.warn(`[watchdog] Detected no successful message fetch for ${elapsed}ms (> ${POLLING_STALL_THRESHOLD_MS}ms). Attempting recovery fetch...`);
 
                 // Only trigger a manual fetch if no other conflicting work is in progress
-                if (!isPollingMessages && !isPerformingFullLoad && !isDryRunInProgress) {
+                if (!isPollingMessages && !isPerformingFullLoad) {
                     fetchAndProcessMessages()
                         .catch(err => console.error('[watchdog] Recovery fetch failed:', err));
                 } else {
@@ -891,7 +920,6 @@ app.post('/dry-run', async (req, res) => {
             // processedMessage.Tags['From-Process'] = 'DRY-RUN'
         }
 
-        // Force dry-run to never mutate runtime memory; only update when write mode is enabled
         const result = await aos.send(processedMessage, globalProcessEnv, ALLOW_WRITE);
         const duration = Date.now() - startTime;
         console.log(`Dry-run for message to ${message.Target} completed in ${duration}ms.`);

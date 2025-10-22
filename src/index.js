@@ -45,6 +45,7 @@ export let LATEST = "module"
 
 let aosHandle = null
 let memory = null
+let dryRunMemory = null
 
 /**
  * @param {string} aosmodule - module label or txId to wasm binary
@@ -125,6 +126,14 @@ export async function aoslocal(aosmodule = LATEST, env, loaderOptions = {}) {
   //}
 
   return {
+    cloneDryRunSnapshot: () => {
+      try {
+        dryRunMemory = memory ? Buffer.from(memory) : null
+        return { success: true, hasSnapshot: !!dryRunMemory }
+      } catch (e) {
+        return { success: false, error: e?.message }
+      }
+    },
     asOwner: async (pid) => {
       DEFAULT_ENV = await loadEnv(pid)
       // use pid to get the process tags and module tags to set as env
@@ -161,16 +170,31 @@ export async function aoslocal(aosmodule = LATEST, env, loaderOptions = {}) {
       .chain(handle(binary, memory))
       .toPromise()
     ,
-    send: (msg, env = {}, updateMemoryFlag = true) => of({ msg, env: mergeDeepRight(DEFAULT_ENV, env) })
-      .map(formatAOS)
-      .chain(handle(binary, memory))
-      .map(ctx => {
-        if (updateMemoryFlag) {
-          return updateMemory(ctx);
-        }
-        return ctx;
-      })
-      .toPromise()
+    send: (msg, env = {}, updateMemoryFlag = true) => {
+      const strategy = process.env.DRY_RUN_STRATEGY || 'snapshot'
+      let memToUse
+      if (updateMemoryFlag) {
+        memToUse = memory
+      } else if (strategy === 'snapshot') {
+        // Use the maintained snapshot; if missing, fall back to a one-off clone
+        memToUse = dryRunMemory || (memory ? Buffer.from(memory) : memory)
+      } else if (strategy === 'clone') {
+        memToUse = memory ? Buffer.from(memory) : memory
+      } else {
+        // default safe behavior
+        memToUse = memory ? Buffer.from(memory) : memory
+      }
+      return of({ msg, env: mergeDeepRight(DEFAULT_ENV, env) })
+        .map(formatAOS)
+        .chain(handle(binary, memToUse))
+        .map(ctx => {
+          if (updateMemoryFlag) {
+            return updateMemory(ctx)
+          }
+          return ctx
+        })
+        .toPromise()
+    }
   }
 }
 

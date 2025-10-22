@@ -505,7 +505,7 @@ export class AoReadState {
         try {
             // Build query parameters
             const queryParams = new URLSearchParams({
-                limit: 200 // Configurable page size
+                limit: 500 // Configurable page size
             })
 
             // Only add nonce parameters if they are defined

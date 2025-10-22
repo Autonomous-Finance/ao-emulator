@@ -2,7 +2,7 @@ http:
   routers:
     cu-fallback:
       rule: PathPrefix(`/`)          # anything that no other router caught
-      priority: 1                    # lower than the 65-priority query routers
+      priority: -1                   # lowest priority so specific routers always win
       entryPoints: [web]
       service: cu-service
       middlewares: [cu-set-host]
