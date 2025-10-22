@@ -159,6 +159,22 @@ if (isNaN(SEND_TIMEOUT_MS) || SEND_TIMEOUT_MS <= 0) {
     console.warn(`Invalid SEND_TIMEOUT_MS value '${process.env.SEND_TIMEOUT_MS}'. Falling back to default ${DEFAULT_SEND_TIMEOUT_MS}.`);
 }
 
+// Timeout for waiting until idle before processing /dry-run
+const DEFAULT_DRY_RUN_WAIT_TIMEOUT_MS = 30000;
+const DRY_RUN_WAIT_TIMEOUT_MS = process.env.DRY_RUN_WAIT_TIMEOUT_MS ? Number(process.env.DRY_RUN_WAIT_TIMEOUT_MS) : DEFAULT_DRY_RUN_WAIT_TIMEOUT_MS;
+if (isNaN(DRY_RUN_WAIT_TIMEOUT_MS) || DRY_RUN_WAIT_TIMEOUT_MS <= 0) {
+    console.warn(`Invalid DRY_RUN_WAIT_TIMEOUT_MS value '${process.env.DRY_RUN_WAIT_TIMEOUT_MS}'. Falling back to default ${DEFAULT_DRY_RUN_WAIT_TIMEOUT_MS}.`);
+}
+
+async function waitForIdle(timeoutMs = DRY_RUN_WAIT_TIMEOUT_MS) {
+    const start = Date.now();
+    while (isPerformingFullLoad || isPollingMessages) {
+        if (Date.now() - start > timeoutMs) return false;
+        await new Promise(r => setTimeout(r, 100));
+    }
+    return true;
+}
+
 // --- Helper function to add jitter ---
 function applyJitter(intervalMs, maxJitterMs = 5000) {
     const jitter = Math.random() * maxJitterMs;
@@ -174,6 +190,7 @@ let isPollingMessages = false;
 let lastProcessedNonce = -1; // Tracks the nonce of the last successfully processed message
 let globalProcessEnv = {};
 let aoReadState = null; // AoReadState instance
+let isDryRunInProgress = false; // Prevent poll/load during dry-runs
 
 // ---- Watchdog / health tracking ----
 let lastMessageFetchTime = Date.now();
@@ -329,7 +346,7 @@ async function pollForNewMessages() {
         // console.log('[pollForNewMessages] aos not initialized, skipping poll.'); // Can be noisy
         return;
     }
-    if (isPerformingFullLoad || isPollingMessages) {
+    if (isPerformingFullLoad || isPollingMessages || isDryRunInProgress) {
         // console.log('[pollForNewMessages] Full load or another poll in progress, skipping.'); // Can be noisy
         return;
     }
@@ -627,7 +644,7 @@ async function performPeriodicFullLoad() {
         // console.warn('[performPeriodicFullLoad] aos not initialized, skipping periodic load.'); // Can be noisy
         return;
     }
-    if (isPerformingFullLoad || isPollingMessages) { // Don't run if a poll is active either, to be safe
+    if (isPerformingFullLoad || isPollingMessages || isDryRunInProgress) { // Don't run if a poll or dry-run is active
         // console.log('[performPeriodicFullLoad] Another load or poll in progress, skipping.'); // Can be noisy
         return;
     }
@@ -739,7 +756,7 @@ async function initializeAndPrepareAos() {
                 console.warn(`[watchdog] Detected no successful message fetch for ${elapsed}ms (> ${POLLING_STALL_THRESHOLD_MS}ms). Attempting recovery fetch...`);
 
                 // Only trigger a manual fetch if no other conflicting work is in progress
-                if (!isPollingMessages && !isPerformingFullLoad) {
+                if (!isPollingMessages && !isPerformingFullLoad && !isDryRunInProgress) {
                     fetchAndProcessMessages()
                         .catch(err => console.error('[watchdog] Recovery fetch failed:', err));
                 } else {
@@ -850,6 +867,12 @@ app.post('/dry-run', async (req, res) => {
     console.log(`Dry-running message for Target: ${message.Target} (Wasm state is for ${PROCESS_ID_TO_MONITOR})`);
 
     try {
+        // Wait until service is idle (no polling/loading)
+        const idleOk = await waitForIdle();
+        if (!idleOk) {
+            return res.status(503).json({ error: 'Service busy processing messages. Try again shortly.' });
+        }
+        isDryRunInProgress = true;
         // Create a new message object with flattened tags
         const processedMessage = flattenMessageTags(message);
         // console.log('Processed message after flattening:', JSON.stringify(processedMessage, null, 2));
@@ -868,7 +891,8 @@ app.post('/dry-run', async (req, res) => {
             // processedMessage.Tags['From-Process'] = 'DRY-RUN'
         }
 
-        const result = await aos.send(processedMessage, globalProcessEnv, !ALLOW_WRITE);
+        // Force dry-run to never mutate runtime memory; only update when write mode is enabled
+        const result = await aos.send(processedMessage, globalProcessEnv, ALLOW_WRITE);
         const duration = Date.now() - startTime;
         console.log(`Dry-run for message to ${message.Target} completed in ${duration}ms.`);
 
@@ -927,6 +951,8 @@ app.post('/dry-run', async (req, res) => {
     } catch (error) {
         console.error('Error during /dry-run:', error);
         res.status(500).json({ error: 'Failed to process dry-run request.', details: error.message });
+    } finally {
+        isDryRunInProgress = false;
     }
 });
 

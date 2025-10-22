@@ -27,14 +27,14 @@ query {
     })
   }).then(res => res.json())
     .then(res => res.data?.transactions?.edges[0]?.node)
-    .then(async process => {
+    .then(async processTx => {
 
-      process.owner = process.owner.address
-      if (process.owner == "fcoN_xJeisVsPXA-trzVAuIiqO3ydLQxM-L4XbrQKzY") {
-        process.owner = process.tags.find(t => t.name === "From-Process")?.value
+      processTx.owner = processTx.owner.address
+      if (processTx.owner == "fcoN_xJeisVsPXA-trzVAuIiqO3ydLQxM-L4XbrQKzY") {
+        processTx.owner = processTx.tags.find(t => t.name === "From-Process")?.value
       }
       // get module
-      const mid = process.tags.find(t => t.name === "Module")?.value
+      const mid = processTx.tags.find(t => t.name === "Module")?.value
       const module = await fetch(`https://arweave-search.goldsky.com/graphql`, {
         method: 'POST',
         headers: {
@@ -63,7 +63,7 @@ query {
         .then(res => res.json())
         .then(res => res.data?.transactions?.edges[0]?.node)
       module.owner = module.owner.address
-      return { Process: capitalizeKeys(process), Module: capitalizeKeys(module) }
+      return { Process: capitalizeKeys(processTx), Module: capitalizeKeys(module) }
     })
 
 }

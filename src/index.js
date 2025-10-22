@@ -158,9 +158,7 @@ export async function aoslocal(aosmodule = LATEST, env, loaderOptions = {}) {
       .toPromise(),
     eval: (expr, env = {}) => of({ expr, env: mergeDeepRight(DEFAULT_ENV, env) })
       .map(formatEval)
-      //.map(ctx => (console.log(ctx), ctx))
       .chain(handle(binary, memory))
-      // .map(updateMemory)
       .toPromise()
     ,
     send: (msg, env = {}, updateMemoryFlag = true) => of({ msg, env: mergeDeepRight(DEFAULT_ENV, env) })
