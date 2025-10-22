@@ -1,14 +1,14 @@
 http:
   routers:
     cu-fallback:
-      rule: PathPrefix(`/`)          # anything that no other router caught
-      priority: -1                   # lowest priority so specific routers always win
+      rule: PathPrefix(`/`) && !PathPrefix(`/dry-run`)
+      priority: -1
       entryPoints: [web]
       service: cu-service
       middlewares: [cu-set-host]
 
   middlewares:
-    cu-set-host:                     # overwrite Host + remove misleading forwards
+    cu-set-host:
       headers:
         customRequestHeaders:
           Host: cu.ao-testnet.xyz
@@ -18,6 +18,6 @@ http:
   services:
     cu-service:
       loadBalancer:
-        passHostHeader: false        # don't leak "localhost" upstream
+        passHostHeader: false
         servers:
-          - url: https://cu.ao-testnet.xyz/dry-run
+          - url: https://cu.ao-testnet.xyz
