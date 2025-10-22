@@ -386,6 +386,11 @@ export class AoReadState {
                 logger.debug(`No assignment nonce found for message ${messageData.id}, will check message tags`)
             }
 
+            // Prefer explicit 'From' tag, then 'From-Process', then fallbacks
+            const fromTag = messageData.tags?.find(t => t.name === 'From')?.value
+            const fromProcessTag = messageData.tags?.find(t => t.name === 'From-Process')?.value
+            const computedFrom = fromTag || fromProcessTag || messageData.from || messageData.owner?.address || node.aoGlobal?.process?.owner
+
             // Extract basic message properties from node.message
             const message = {
                 Id: messageData.id,
@@ -398,7 +403,7 @@ export class AoReadState {
                 Data: messageData.data,
                 // Use processId as fallback if message target is null/undefined
                 Target: messageData.target ?? node.aoGlobal?.process?.id,
-                From: messageData.tags?.find(t => t.name === 'From-Process')?.value || messageData.from,
+                From: computedFrom,
                 // Hash-Chain from assignment tags
                 'Hash-Chain': assignmentTags['Hash-Chain'],
                 // Cron - needs clarification where this comes from in the new structure
@@ -456,7 +461,7 @@ export class AoReadState {
                             logger.warn(`Failed to parse numeric value for tag '${tag.name}': ${tag.value}`)
                             message[tag.name] = tag.value
                         }
-                    } else if (!['Nonce', 'Epoch', 'Id'].includes(tag.name)) {
+                    } else if (!['Nonce', 'Epoch'].includes(tag.name)) {
                         // For non-nonce/epoch fields, add normally
                         message[tag.name] = tag.value
                     }

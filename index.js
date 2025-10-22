@@ -270,6 +270,11 @@ async function fetchAndProcessMessages(fromNonceOverride) {
                     lastProcessedNonce = messageToSend.AssignmentNonce; // Update nonce only after successful send
                     console.log(`[fetchAndProcessMessages] Successfully processed message ID: ${messageToSend.Id}. New lastProcessedNonce: ${lastProcessedNonce}`);
 
+
+                    if (process.env.LOG_EVAL === 'true') {
+                        console.log(`[fetchAndProcessMessages] messageToSend:`, JSON.stringify(messageToSend, null, 2));
+                        console.log(`[fetchAndProcessMessages] aos.send() result Output:`, r['Output']);
+                    }
                     // Persist result to SQLite (if enabled)
                     if (PERSIST_RESULTS) {
                         try {
