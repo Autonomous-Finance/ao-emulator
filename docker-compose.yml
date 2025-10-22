@@ -187,22 +187,6 @@ services:
       - traefik.http.services.flp.loadbalancer.healthcheck.timeout=3s
       - traefik.http.services.flp.loadbalancer.strategy=wrr
 
-  # FLP Factory Process
-  aos-flp-staging-factory:
-    <<: *service-base
-    environment:
-      <<: *env-base
-      PROCESS_ID_TO_MONITOR: JC0_BVWWf7xbmXUeKskDBRQ5fJo8fWgPtaEYMOf-Vbk
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.flp.rule=Query(`process-id`,`JC0_BVWWf7xbmXUeKskDBRQ5fJo8fWgPtaEYMOf-Vbk`)
-      - traefik.http.routers.flp.entrypoints=web
-      - traefik.http.services.flp.loadbalancer.server.port=8080
-      - traefik.http.services.flp.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.flp.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.flp.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.flp.loadbalancer.strategy=wrr
-
   # AMM Factory Process
   aos-amm-factory:
     <<: *service-base
