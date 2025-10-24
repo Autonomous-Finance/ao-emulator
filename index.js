@@ -280,11 +280,7 @@ async function fetchAndProcessMessages(fromNonceOverride) {
 
                 try {
                     // console.log(`[fetchAndProcessMessages] messageToSend:`, messageToSend);
-                    const r = await withTimeout(
-                        aos.send(messageToSend, globalProcessEnv),
-                        SEND_TIMEOUT_MS,
-                        'aos.send'
-                    );
+                    const r = await aos.send(messageToSend, globalProcessEnv);
                     // console.log(`[fetchAndProcessMessages] aos.send() result:`, r);
                     lastProcessedNonce = messageToSend.AssignmentNonce; // Update nonce only after successful send
                     console.log(`[fetchAndProcessMessages] Successfully processed message ID: ${messageToSend.Id}. New lastProcessedNonce: ${lastProcessedNonce}`);
@@ -760,8 +756,13 @@ async function initializeAndPrepareAos() {
             LOAD_FROM_CHECKPOINT: LOAD_FROM_CHECKPOINT
         };
         console.log('Using loader options:', loaderOptions);
+        console.log('globalProcessEnv:', globalProcessEnv);
+        console.log('effectiveModuleId:', effectiveModuleId);
         aos = await aoslocal(effectiveModuleId, globalProcessEnv, loaderOptions);
+
+        console.log('owner:', await aos.eval('print(Owner)'))
         console.log('aoslocal initialized.');
+
 
         await initialLoadAndCatchup();
 

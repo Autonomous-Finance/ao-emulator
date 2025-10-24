@@ -177,6 +177,7 @@ services:
     environment:
       <<: *env-base
       PROCESS_ID_TO_MONITOR: It-_AKlEfARBmJdbJew1nG9_hIaZt0t20wQc28mFGBE
+      LOAD_FROM_SCRATCH: 'true'
     labels:
       - traefik.enable=true
       - traefik.http.routers.flp.rule=Query(`process-id`,`It-_AKlEfARBmJdbJew1nG9_hIaZt0t20wQc28mFGBE`)

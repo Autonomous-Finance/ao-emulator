@@ -110,6 +110,8 @@ services:
       - PORT=3012
       - SU_URL=https://su-router.ao-testnet.xyz
       - MESSAGE_POLLING_INTERVAL=10s
+      - LOAD_FROM_SCRATCH=true
+      - LOAD_FROM_CHECKPOINT=false
     networks:
       - aos-network
 

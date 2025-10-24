@@ -118,7 +118,7 @@ export async function aoslocal(aosmodule = LATEST, env, loaderOptions = {}) {
 
   // load process message
   //if (src) {
-  await of({ msg: DEFAULT_ENV.Process, env: env ?? DEFAULT_ENV })
+  await of({ msg: (env && env.Process) ? env.Process : DEFAULT_ENV.Process, env: mergeDeepRight(DEFAULT_ENV, env ?? {}) })
     .map(formatAOS)
     .chain(handle(binary, memory))
     .map(updateMemory)
@@ -221,12 +221,12 @@ function formatEval(ctx) {
 function formatAOS(ctx) {
   const aoMsg = {
     Id: "MESSAGE_ID",
-    Target: ctx.msg?.Target || DEFAULT_ENV.Process.Id,
-    Owner: ctx.msg?.Owner || DEFAULT_ENV.Process.Owner,
+    Target: ctx.msg?.Target || ctx.env?.Process?.Id || DEFAULT_ENV.Process.Id,
+    Owner: ctx.msg?.Owner || ctx.env?.Process?.Owner || DEFAULT_ENV.Process.Owner,
     Data: ctx.msg?.Data || "",
     Module: "MODULE",
     ["Block-Height"]: "1",
-    From: ctx.msg?.From || ctx.msg?.Owner || DEFAULT_ENV.Process.Owner,
+    From: ctx.msg?.From || ctx.msg?.Owner || ctx.env?.Process?.Owner || DEFAULT_ENV.Process.Owner,
     Timestamp: (new Date().getTime()).toString(),
     Tags: Object
       .keys(ctx.msg)
