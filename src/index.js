@@ -47,6 +47,33 @@ let aosHandle = null
 let memory = null
 let dryRunMemory = null
 
+function cloneMemoryBuffer(m) {
+  try {
+    if (!m) return null
+    // If it's already a Buffer, make an explicit copy
+    if (Buffer.isBuffer(m)) return Buffer.from(m)
+    // TypedArray (e.g., Uint8Array) → force a deep copy
+    if (ArrayBuffer.isView(m) && m.buffer instanceof ArrayBuffer) {
+      const view = /** @type {Uint8Array} */(m)
+      const buf = Buffer.allocUnsafe(view.byteLength)
+      buf.set(new Uint8Array(view.buffer, view.byteOffset, view.byteLength))
+      return buf
+    }
+    // ArrayBuffer → copy its bytes
+    if (m instanceof ArrayBuffer) {
+      const src = new Uint8Array(m)
+      const buf = Buffer.allocUnsafe(src.byteLength)
+      buf.set(src)
+      return buf
+    }
+    // Fallback – attempt to coerce into a new Buffer (copy semantics for strings/arrays)
+    return Buffer.from(m)
+  } catch (_) {
+    // As a last resort, return null so callers can fall back
+    return null
+  }
+}
+
 /**
  * @param {string} aosmodule - module label or txId to wasm binary
  * @param {object} [env] - The environment object.
@@ -128,7 +155,8 @@ export async function aoslocal(aosmodule = LATEST, env, loaderOptions = {}) {
   return {
     cloneDryRunSnapshot: () => {
       try {
-        dryRunMemory = memory ? Buffer.from(memory) : null
+        const cloned = cloneMemoryBuffer(memory)
+        dryRunMemory = cloned
         return { success: true, hasSnapshot: !!dryRunMemory }
       } catch (e) {
         return { success: false, error: e?.message }
@@ -176,13 +204,14 @@ export async function aoslocal(aosmodule = LATEST, env, loaderOptions = {}) {
       if (updateMemoryFlag) {
         memToUse = memory
       } else if (strategy === 'snapshot') {
-        // Use the maintained snapshot; if missing, fall back to a one-off clone
-        memToUse = dryRunMemory || (memory ? Buffer.from(memory) : memory)
+        // Use a cloned copy of the maintained snapshot to avoid mutating it
+        // Fall back to a one-off clone of the live memory when snapshot is missing
+        memToUse = (dryRunMemory ? cloneMemoryBuffer(dryRunMemory) : cloneMemoryBuffer(memory))
       } else if (strategy === 'clone') {
-        memToUse = memory ? Buffer.from(memory) : memory
+        memToUse = cloneMemoryBuffer(memory)
       } else {
         // default safe behavior
-        memToUse = memory ? Buffer.from(memory) : memory
+        memToUse = cloneMemoryBuffer(memory)
       }
       return of({ msg, env: mergeDeepRight(DEFAULT_ENV, env) })
         .map(formatAOS)

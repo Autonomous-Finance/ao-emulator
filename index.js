@@ -331,8 +331,26 @@ async function fetchAndProcessMessages(fromNonceOverride) {
                 }
             }
             console.log('[fetchAndProcessMessages] All fetched messages in this batch processed (or limit reached).');
+            // Refresh dry-run snapshot if using snapshot strategy and we advanced
+            if ((process.env.DRY_RUN_STRATEGY || 'snapshot') === 'snapshot' && typeof aos?.cloneDryRunSnapshot === 'function' && lastProcessedNonce !== startNonceBefore) {
+                try {
+                    const r = await aos.cloneDryRunSnapshot();
+                    console.log(`[dry-run] Snapshot refreshed after ingestion. success=${r?.success} hasSnapshot=${r?.hasSnapshot}`);
+                } catch (e) {
+                    console.warn('[dry-run] Failed to refresh snapshot after ingestion:', e?.message || e);
+                }
+            }
         } else {
             console.log('[fetchAndProcessMessages] No new messages found or fetched from SU.');
+            // Optionally refresh snapshot when idle
+            if ((process.env.DRY_RUN_STRATEGY || 'snapshot') === 'snapshot' && typeof aos?.cloneDryRunSnapshot === 'function') {
+                try {
+                    const r = await aos.cloneDryRunSnapshot();
+                    console.log(`[dry-run] Snapshot refreshed when idle. success=${r?.success} hasSnapshot=${r?.hasSnapshot}`);
+                } catch (e) {
+                    console.warn('[dry-run] Failed to refresh snapshot on idle:', e?.message || e);
+                }
+            }
         }
     } catch (fetchProcessError) {
         console.error(`[fetchAndProcessMessages] Error fetching or processing messages from SU (fromNonce ${effectiveFromNonce}):`, fetchProcessError);
@@ -365,15 +383,6 @@ async function pollForNewMessages() {
         console.error('[pollForNewMessages] Error during message polling cycle:', error);
     }
     finally {
-        // Refresh snapshot BEFORE clearing isPollingMessages to prevent race condition
-        if ((process.env.DRY_RUN_STRATEGY || 'snapshot') === 'snapshot' && typeof aos?.cloneDryRunSnapshot === 'function') {
-            try {
-                const r = await aos.cloneDryRunSnapshot();
-                console.log(`[dry-run] Snapshot refreshed at end of poll cycle. success=${r?.success} hasSnapshot=${r?.hasSnapshot}`);
-            } catch (e) {
-                console.warn('[dry-run] Failed to refresh snapshot at end of poll:', e?.message || e);
-            }
-        }
         isPollingMessages = false;
         // console.log('[pollForNewMessages] Poll cycle finished.');
     }
