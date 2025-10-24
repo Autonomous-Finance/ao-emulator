@@ -112,6 +112,7 @@ services:
       - MESSAGE_POLLING_INTERVAL=10s
       - LOAD_FROM_SCRATCH=true
       - LOAD_FROM_CHECKPOINT=false
+      - DRY_RUN_STRATEGY=clone
     networks:
       - aos-network
 

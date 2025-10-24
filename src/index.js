@@ -46,6 +46,7 @@ export let LATEST = "module"
 let aosHandle = null
 let memory = null
 let dryRunMemory = null
+let aosHandleDryRun = null
 
 function cloneMemoryBuffer(m) {
   try {
@@ -136,6 +137,14 @@ export async function aoslocal(aosmodule = LATEST, env, loaderOptions = {}) {
   const binary = await fetch('https://arweave.net/' + mod).then(res => res.blob()).then(blob => blob.arrayBuffer())
 
   aosHandle = await AoLoader(binary, aoLoaderActualOptions)
+  // Create a separate, safe runner for dry-runs that never reuses underlying memory
+  try {
+    const aoLoaderDryOptions = { ...aoLoaderActualOptions, UNSAFE_MEMORY: false }
+    aosHandleDryRun = await AoLoader(binary, aoLoaderDryOptions)
+  } catch (e) {
+    // Fallback: if a separate dry-run handle can't be created, we will use the main handle
+    aosHandleDryRun = aosHandle
+  }
 
   // load memory with source
   let updateMemory = (ctx) => {
@@ -155,8 +164,7 @@ export async function aoslocal(aosmodule = LATEST, env, loaderOptions = {}) {
   return {
     cloneDryRunSnapshot: () => {
       try {
-        const cloned = cloneMemoryBuffer(memory)
-        dryRunMemory = cloned
+        dryRunMemory = memory ? deepCloneMemory(memory) : null
         return { success: true, hasSnapshot: !!dryRunMemory }
       } catch (e) {
         return { success: false, error: e?.message }
@@ -204,18 +212,17 @@ export async function aoslocal(aosmodule = LATEST, env, loaderOptions = {}) {
       if (updateMemoryFlag) {
         memToUse = memory
       } else if (strategy === 'snapshot') {
-        // Use a cloned copy of the maintained snapshot to avoid mutating it
-        // Fall back to a one-off clone of the live memory when snapshot is missing
-        memToUse = (dryRunMemory ? cloneMemoryBuffer(dryRunMemory) : cloneMemoryBuffer(memory))
+        // Use a fresh clone from the maintained snapshot; if missing, fall back to a one-off deep clone
+        memToUse = dryRunMemory ? deepCloneMemory(dryRunMemory) : (memory ? deepCloneMemory(memory) : memory)
       } else if (strategy === 'clone') {
-        memToUse = cloneMemoryBuffer(memory)
+        memToUse = memory ? deepCloneMemory(memory) : memory
       } else {
         // default safe behavior
-        memToUse = cloneMemoryBuffer(memory)
+        memToUse = memory ? deepCloneMemory(memory) : memory
       }
       return of({ msg, env: mergeDeepRight(DEFAULT_ENV, env) })
         .map(formatAOS)
-        .chain(handle(binary, memToUse))
+        .chain(updateMemoryFlag ? handle(binary, memToUse) : handleDry(binary, memToUse))
         .map(ctx => {
           if (updateMemoryFlag) {
             return updateMemory(ctx)
@@ -276,6 +283,37 @@ function handle(binary, mem) {
     //     console.log('memory: ', mem.byteLength)
     //     return fromPromise(h)(mem, ctx.msg, ctx.env)
     //   })
+  }
+}
+
+function handleDry(binary, mem) {
+  return (ctx) => {
+    return fromPromise(aosHandleDryRun)(mem, ctx.msg, ctx.env)
+  }
+}
+
+// Ensures a deep copy of memory regardless of input type (Buffer, ArrayBuffer, TypedArray)
+function deepCloneMemory(mem) {
+  if (!mem) return mem
+  if (Buffer.isBuffer(mem)) {
+    return Buffer.from(mem)
+  }
+  if (mem instanceof ArrayBuffer) {
+    // Copy underlying ArrayBuffer to avoid sharing memory
+    return Buffer.from(mem.slice(0))
+  }
+  if (ArrayBuffer.isView(mem)) {
+    const view = mem
+    // Create a precise typed array view and copy its bytes
+    const exactView = new Uint8Array(view.buffer, view.byteOffset, view.byteLength)
+    const copy = exactView.slice()
+    return Buffer.from(copy)
+  }
+  try {
+    return Buffer.from(mem)
+  } catch (e) {
+    const arr = Uint8Array.from(mem)
+    return Buffer.from(arr)
   }
 }
 
