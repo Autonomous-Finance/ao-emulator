@@ -128,7 +128,11 @@ export async function aoslocal(aosmodule = LATEST, env, loaderOptions = {}) {
   return {
     cloneDryRunSnapshot: () => {
       try {
-        dryRunMemory = memory ? Buffer.from(memory) : null
+        // Create a true deep copy by allocating new buffer and copying bytes
+        dryRunMemory = memory ? Buffer.allocUnsafe(memory.length).fill(0) : null
+        if (dryRunMemory && memory) {
+          memory.copy(dryRunMemory)
+        }
         return { success: true, hasSnapshot: !!dryRunMemory }
       } catch (e) {
         return { success: false, error: e?.message }
@@ -177,12 +181,34 @@ export async function aoslocal(aosmodule = LATEST, env, loaderOptions = {}) {
         memToUse = memory
       } else if (strategy === 'snapshot') {
         // Use the maintained snapshot; if missing, fall back to a one-off clone
-        memToUse = dryRunMemory || (memory ? Buffer.from(memory) : memory)
+        if (dryRunMemory) {
+          memToUse = dryRunMemory
+        } else if (memory) {
+          // Create a deep copy as fallback
+          const fallbackMem = Buffer.allocUnsafe(memory.length)
+          memory.copy(fallbackMem)
+          memToUse = fallbackMem
+        } else {
+          memToUse = memory
+        }
       } else if (strategy === 'clone') {
-        memToUse = memory ? Buffer.from(memory) : memory
+        // Create a deep copy for clone strategy
+        if (memory) {
+          const clonedMem = Buffer.allocUnsafe(memory.length)
+          memory.copy(clonedMem)
+          memToUse = clonedMem
+        } else {
+          memToUse = memory
+        }
       } else {
-        // default safe behavior
-        memToUse = memory ? Buffer.from(memory) : memory
+        // default safe behavior - deep copy
+        if (memory) {
+          const safeMem = Buffer.allocUnsafe(memory.length)
+          memory.copy(safeMem)
+          memToUse = safeMem
+        } else {
+          memToUse = memory
+        }
       }
       return of({ msg, env: mergeDeepRight(DEFAULT_ENV, env) })
         .map(formatAOS)
