@@ -289,6 +289,37 @@ async function fetchAndProcessMessages(fromNonceOverride) {
                     if (process.env.LOG_EVAL === 'true') {
                         console.log(`[fetchAndProcessMessages] messageToSend:`, JSON.stringify(messageToSend, null, 2));
                         console.log(`[fetchAndProcessMessages] aos.send() result Output:`, r['Output']);
+                        const tmsg = {
+                            "Id": messageToSend.Id,
+                            "Target": PROCESS_ID_TO_MONITOR,
+                            "Owner": messageToSend.Id,
+                            "Anchor": "0",
+                            "Data": "",
+                            "Tags": [
+                                {
+                                    "name": "Action",
+                                    "value": "Get-FLPs"
+                                },
+                                {
+                                    "name": "Data-Protocol",
+                                    "value": "ao"
+                                },
+                                {
+                                    "name": "Type",
+                                    "value": "Message"
+                                },
+                                {
+                                    "name": "Variant",
+                                    "value": "ao.TN.1"
+                                }
+                            ]
+                        };
+                        const flpResult = await aos.send(flattenMessageTags(tmsg), globalProcessEnv, false);
+                        if (flpResult.Messages && flpResult.Messages.length > 0) {
+                            console.log(`[fetchAndProcessMessages] aos.send() result FLP:`, JSON.parse(flpResult.Messages[0].Data || '[]').length);
+                        }
+                        const flpEvalResult = await aos.eval('print("number of flps: " .. #require("factory.queries").getFlps({}))', globalProcessEnv);
+                        console.log(`[fetchAndProcessMessages] aos.eval() result FLP:`, flpEvalResult);
                     }
                     // Persist result to SQLite (if enabled)
                     if (PERSIST_RESULTS) {
@@ -912,7 +943,7 @@ app.post('/dry-run', async (req, res) => {
             // processedMessage.Tags['From-Process'] = 'DRY-RUN'
         }
 
-        const result = await aos.send(processedMessage, globalProcessEnv, ALLOW_WRITE);
+        const result = await aos.send(processedMessage, globalProcessEnv, false);
         const duration = Date.now() - startTime;
         console.log(`Dry-run for message to ${message.Target} completed in ${duration}ms.`);
 
