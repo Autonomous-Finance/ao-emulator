@@ -48,6 +48,33 @@ let memory = null
 let dryRunMemory = null
 let aosHandleDryRun = null
 
+function cloneMemoryBuffer(m) {
+  try {
+    if (!m) return null
+    // If it's already a Buffer, make an explicit copy
+    if (Buffer.isBuffer(m)) return Buffer.from(m)
+    // TypedArray (e.g., Uint8Array) → force a deep copy
+    if (ArrayBuffer.isView(m) && m.buffer instanceof ArrayBuffer) {
+      const view = /** @type {Uint8Array} */(m)
+      const buf = Buffer.allocUnsafe(view.byteLength)
+      buf.set(new Uint8Array(view.buffer, view.byteOffset, view.byteLength))
+      return buf
+    }
+    // ArrayBuffer → copy its bytes
+    if (m instanceof ArrayBuffer) {
+      const src = new Uint8Array(m)
+      const buf = Buffer.allocUnsafe(src.byteLength)
+      buf.set(src)
+      return buf
+    }
+    // Fallback – attempt to coerce into a new Buffer (copy semantics for strings/arrays)
+    return Buffer.from(m)
+  } catch (_) {
+    // As a last resort, return null so callers can fall back
+    return null
+  }
+}
+
 /**
  * @param {string} aosmodule - module label or txId to wasm binary
  * @param {object} [env] - The environment object.
