@@ -265,13 +265,13 @@ services:
       PROCESS_ID_TO_MONITOR: 0syT13r0s0tgPmIed95bJnuSqaD29HQNN8D3ElLSrsc
     labels:
       - traefik.enable=true
-      - traefik.http.routers.auction-factory-staging.rule=Query(`process-id`,`0syT13r0s0tgPmIed95bJnuSqaD29HQNN8D3ElLSrsc`)
-      - traefik.http.routers.auction-factory-staging.entrypoints=web
-      - traefik.http.services.auction-factory-staging.loadbalancer.server.port=8080
-      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.auction-factory-staging.loadbalancer.strategy=wrr
+      - traefik.http.routers.ao-token.rule=Query(`process-id`,`0syT13r0s0tgPmIed95bJnuSqaD29HQNN8D3ElLSrsc`)
+      - traefik.http.routers.ao-token.entrypoints=web
+      - traefik.http.services.ao-token.loadbalancer.server.port=8080
+      - traefik.http.services.ao-token.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.ao-token.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.ao-token.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.ao-token.loadbalancer.strategy=wrr
 
 
   aos-war-token:
@@ -281,13 +281,13 @@ services:
       PROCESS_ID_TO_MONITOR: xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
     labels:
       - traefik.enable=true
-      - traefik.http.routers.auction-factory-staging.rule=Query(`process-id`,`xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10`)
-      - traefik.http.routers.auction-factory-staging.entrypoints=web
-      - traefik.http.services.auction-factory-staging.loadbalancer.server.port=8080
-      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.auction-factory-staging.loadbalancer.strategy=wrr
+      - traefik.http.routers.war-token.rule=Query(`process-id`,`xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10`)
+      - traefik.http.routers.war-token.entrypoints=web
+      - traefik.http.services.war-token.loadbalancer.server.port=8080
+      - traefik.http.services.war-token.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.war-token.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.war-token.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.war-token.loadbalancer.strategy=wrr
 
 
   aos-wusdc-token:
@@ -297,13 +297,13 @@ services:
       PROCESS_ID_TO_MONITOR: xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
     labels:
       - traefik.enable=true
-      - traefik.http.routers.auction-factory-staging.rule=Query(`process-id`,`xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10`)
-      - traefik.http.routers.auction-factory-staging.entrypoints=web
-      - traefik.http.services.auction-factory-staging.loadbalancer.server.port=8080
-      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.auction-factory-staging.loadbalancer.strategy=wrr
+      - traefik.http.routers.wusdc-token.rule=Query(`process-id`,`xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10`)
+      - traefik.http.routers.wusdc-token.entrypoints=web
+      - traefik.http.services.wusdc-token.loadbalancer.server.port=8080
+      - traefik.http.services.wusdc-token.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.wusdc-token.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.wusdc-token.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.wusdc-token.loadbalancer.strategy=wrr
         
   aos-delegation-oracle:
     <<: *service-base
@@ -312,13 +312,13 @@ services:
       PROCESS_ID_TO_MONITOR: cuxSKjGJ-WDB9PzSkVkVVrIBSh3DrYHYz44usQOj5yE
     labels:
       - traefik.enable=true
-      - traefik.http.routers.auction-factory-staging.rule=Query(`process-id`,`cuxSKjGJ-WDB9PzSkVkVVrIBSh3DrYHYz44usQOj5yE`)
-      - traefik.http.routers.auction-factory-staging.entrypoints=web
-      - traefik.http.services.auction-factory-staging.loadbalancer.server.port=8080
-      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.auction-factory-staging.loadbalancer.strategy=wrr
+      - traefik.http.routers.delegation-oracle.rule=Query(`process-id`,`cuxSKjGJ-WDB9PzSkVkVVrIBSh3DrYHYz44usQOj5yE`)
+      - traefik.http.routers.delegation-oracle.entrypoints=web
+      - traefik.http.services.delegation-oracle.loadbalancer.server.port=8080
+      - traefik.http.services.delegation-oracle.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.delegation-oracle.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.delegation-oracle.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.delegation-oracle.loadbalancer.strategy=wrr
 
   aos-usds-oracle:
     <<: *service-base
@@ -327,13 +327,13 @@ services:
       PROCESS_ID_TO_MONITOR: qjOMZnan8Vo2gaLaOF1FXbFXOQOn_5sKbYspNSVRyNY
     labels:
       - traefik.enable=true
-      - traefik.http.routers.auction-factory-staging.rule=Query(`process-id`,`qjOMZnan8Vo2gaLaOF1FXbFXOQOn_5sKbYspNSVRyNY`)
-      - traefik.http.routers.auction-factory-staging.entrypoints=web
-      - traefik.http.services.auction-factory-staging.loadbalancer.server.port=8080
-      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.auction-factory-staging.loadbalancer.strategy=wrr
+      - traefik.http.routers.usds-oracle.rule=Query(`process-id`,`qjOMZnan8Vo2gaLaOF1FXbFXOQOn_5sKbYspNSVRyNY`)
+      - traefik.http.routers.usds-oracle.entrypoints=web
+      - traefik.http.services.usds-oracle.loadbalancer.server.port=8080
+      - traefik.http.services.usds-oracle.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.usds-oracle.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.usds-oracle.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.usds-oracle.loadbalancer.strategy=wrr
 
 
   aos-dai-oracle:
@@ -343,13 +343,13 @@ services:
       PROCESS_ID_TO_MONITOR: 5q8vpzC5QAKOAJFM26MAKfZw1gwtw7WA_J2861ZiKhI
     labels:
       - traefik.enable=true
-      - traefik.http.routers.auction-factory-staging.rule=Query(`process-id`,`5q8vpzC5QAKOAJFM26MAKfZw1gwtw7WA_J2861ZiKhI`)
-      - traefik.http.routers.auction-factory-staging.entrypoints=web
-      - traefik.http.services.auction-factory-staging.loadbalancer.server.port=8080
-      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.auction-factory-staging.loadbalancer.strategy=wrr
+      - traefik.http.routers.dai-oracle.rule=Query(`process-id`,`5q8vpzC5QAKOAJFM26MAKfZw1gwtw7WA_J2861ZiKhI`)
+      - traefik.http.routers.dai-oracle.entrypoints=web
+      - traefik.http.services.dai-oracle.loadbalancer.server.port=8080
+      - traefik.http.services.dai-oracle.loadbalancer.healthcheck.path=/health
+      - traefik.http.services.dai-oracle.loadbalancer.healthcheck.interval=30s
+      - traefik.http.services.dai-oracle.loadbalancer.healthcheck.timeout=3s
+      - traefik.http.services.dai-oracle.loadbalancer.strategy=wrr
 
   # ─── monitoring stack ─────────────────────────────────────────────
   prometheus:
