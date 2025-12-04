@@ -30,9 +30,7 @@ query {
     .then(async processTx => {
 
       processTx.owner = processTx.owner.address
-      if (processTx.owner == "fcoN_xJeisVsPXA-trzVAuIiqO3ydLQxM-L4XbrQKzY") {
-        processTx.owner = processTx.tags.find(t => t.name === "From-Process")?.value
-      }
+
       // get module
       const mid = processTx.tags.find(t => t.name === "Module")?.value
       const module = await fetch(`https://arweave-search.goldsky.com/graphql`, {

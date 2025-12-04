@@ -20,28 +20,16 @@ services:
   traefik:
     image: traefik:v3.4
     command:
-      # ────────── core ──────────
-      - --log.level=INFO # keep DEBUG for trouble-shooting only
+      - --log.level=INFO
       - --providers.docker=true
       - --providers.docker.exposedByDefault=false
-      - --providers.file.directory=/etc/traefik/dynamic
-      - --providers.file.watch=true        # hot-reload on change
-
-      # ────────── entry-points ─────
       - --entrypoints.web.address=:80
-      - --entrypoints.metrics.address=:9100 # ← Prometheus will scrape here
-
-      # ────────── dashboard / api ─
+      - --entrypoints.metrics.address=:9100
       - --api.dashboard=true
-      - --api.debug=true # adds /api/rawdata
-
-      # ────────── ACCESS LOG ───────
-      - --accesslog=true # turn it on :contentReference[oaicite:0]{index=0}
-      - --accesslog.format=json # easier to ship to Loki/ELK
-      - --accesslog.addinternals=true # include dashboard, ping, etc.
-
-      # ────────── METRICS (Prom) ───
-      - --metrics.prometheus=true # exporter on the chosen EP :contentReference[oaicite:1]{index=1}
+      - --api.debug=true
+      - --accesslog=true
+      - --accesslog.format=json
+      - --metrics.prometheus=true
       - --metrics.prometheus.entrypoint=metrics
       - --metrics.prometheus.addrouterslabels=true
       - --metrics.prometheus.addserviceslabels=true
@@ -49,309 +37,25 @@ services:
       - "8080:80"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./dynamic:/etc/traefik/dynamic:ro
     labels:
       - traefik.enable=true
-      - traefik.http.routers.tkd.rule=Host(`traefik.localhost`)
-      - traefik.http.routers.tkd.entrypoints=web # or websecure
-      - traefik.http.routers.tkd.service=api@internal
+      - traefik.http.routers.dashboard.rule=Host(`traefik.localhost`)
+      - traefik.http.routers.dashboard.service=api@internal
     networks: [ aos-network ]
 
-  # Agent Factory Process
-  aos-agent-factory:
-    <<: *service-base
-    environment:
-      <<: *env-base
-      PROCESS_ID_TO_MONITOR: x_WysdFwKD_buywRK9qLA7IexdlsvVTVq6ESWMRCzFY
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.agent.rule=Query(`process-id`,`x_WysdFwKD_buywRK9qLA7IexdlsvVTVq6ESWMRCzFY`)
-      - traefik.http.routers.agent.entrypoints=web
-      - traefik.http.services.agent.loadbalancer.server.port=8080
-      - traefik.http.services.agent.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.agent.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.agent.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.agent.loadbalancer.strategy=wrr
+  # Example Service Configuration
+  # aos-example-process:
+  #   <<: *service-base
+  #   environment:
+  #     <<: *env-base
+  #     PROCESS_ID_TO_MONITOR: YOUR_PROCESS_ID_HERE
+  #   labels:
+  #     - traefik.enable=true
+  #     - traefik.http.routers.example.rule=Query(`process-id`,`YOUR_PROCESS_ID_HERE`)
+  #     - traefik.http.routers.example.entrypoints=web
+  #     - traefik.http.services.example.loadbalancer.server.port=8080
 
-  # Permaweb Index Process
-  aos-permaweb-index:
-    <<: *service-base
-    environment:
-      <<: *env-base
-      PROCESS_ID_TO_MONITOR: rxxU4g-7tUHGvF28W2l53hxarpbaFR4NaSnOaxx6MIE
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.permaweb.rule=Query(`process-id`,`rxxU4g-7tUHGvF28W2l53hxarpbaFR4NaSnOaxx6MIE`)
-      - traefik.http.routers.permaweb.entrypoints=web
-      - traefik.http.services.permaweb.loadbalancer.server.port=8080
-      - traefik.http.services.permaweb.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.permaweb.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.permaweb.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.permaweb.loadbalancer.strategy=wrr
-
-  #Token Locker Process
-  aos-token-locker:
-    <<: *service-base
-    environment:
-      <<: *env-base
-      PROCESS_ID_TO_MONITOR: jxiKuu_21_KjNga8KxH1h8fJeoCl9DzcEjGBiKN66DY
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.token-locker.rule=Query(`process-id`,`jxiKuu_21_KjNga8KxH1h8fJeoCl9DzcEjGBiKN66DY`)
-      - traefik.http.routers.token-locker.entrypoints=web
-      - traefik.http.services.token-locker.loadbalancer.server.port=8080
-      - traefik.http.services.token-locker.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.token-locker.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.token-locker.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.token-locker.loadbalancer.strategy=wrr
-
-  # Permaweb Index Token Process
-  aos-permaweb-index-token:
-    <<: *service-base
-    environment:
-      <<: *env-base
-      PROCESS_ID_TO_MONITOR: 4hXj_E-5fAKmo4E8KjgQvuDJKAFk9P2grhycVmISDLs
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.permaweb-token.rule=Query(`process-id`,`4hXj_E-5fAKmo4E8KjgQvuDJKAFk9P2grhycVmISDLs`)
-      - traefik.http.routers.permaweb-token.entrypoints=web
-      - traefik.http.services.permaweb-token.loadbalancer.server.port=8080
-      - traefik.http.services.permaweb-token.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.permaweb-token.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.permaweb-token.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.permaweb-token.loadbalancer.strategy=wrr
-
-  # Registry Process
-  aos-registry:
-    <<: *service-base
-    environment:
-      <<: *env-base
-      PROCESS_ID_TO_MONITOR: iZuNCnURIQHazG9cIui2B5FdQzWRE8TMa28i6nHr5ic
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.registry.rule=Query(`process-id`,`iZuNCnURIQHazG9cIui2B5FdQzWRE8TMa28i6nHr5ic`)
-      - traefik.http.routers.registry.entrypoints=web
-      - traefik.http.services.registry.loadbalancer.server.port=8080
-      - traefik.http.services.registry.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.registry.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.registry.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.registry.loadbalancer.strategy=wrr
-
-  # Token Factory Process
-  aos-token-factory:
-    <<: *service-base
-    deploy:
-      replicas: 1
-    environment:
-      <<: *env-base
-      PROCESS_ID_TO_MONITOR: mQES2_hwlXQS8JVSdPJvRTkp78slLCl2gpm6sW3CK9w
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.token-factory.rule=Query(`process-id`,`mQES2_hwlXQS8JVSdPJvRTkp78slLCl2gpm6sW3CK9w`)
-      - traefik.http.routers.token-factory.entrypoints=web
-      - traefik.http.services.token-factory.loadbalancer.server.port=8080
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.token-factory.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.token-factory.loadbalancer.strategy=wrr
-
-  # Portfolio Agent Factory Process
-  aos-portfolio-agent-factory:
-    <<: *service-base
-    environment:
-      <<: *env-base
-      PROCESS_ID_TO_MONITOR: OF3TuQgd3RkTb9HSs_V94vVPFeRXi1h0EGJhSgda7OI
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.portfolio.rule=Query(`process-id`,`OF3TuQgd3RkTb9HSs_V94vVPFeRXi1h0EGJhSgda7OI`)
-      - traefik.http.routers.portfolio.entrypoints=web
-      - traefik.http.services.portfolio.loadbalancer.server.port=8080
-      - traefik.http.services.portfolio.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.portfolio.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.portfolio.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.portfolio.loadbalancer.strategy=wrr
-
-  # FLP Factory Process
-  aos-flp-factory:
-    <<: *service-base
-    environment:
-      <<: *env-base
-      PROCESS_ID_TO_MONITOR: It-_AKlEfARBmJdbJew1nG9_hIaZt0t20wQc28mFGBE
-      LOAD_FROM_SCRATCH: 'true'
-      DRY_RUN_STRATEGY: clone
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.flp.rule=Query(`process-id`,`It-_AKlEfARBmJdbJew1nG9_hIaZt0t20wQc28mFGBE`)
-      - traefik.http.routers.flp.entrypoints=web
-      - traefik.http.services.flp.loadbalancer.server.port=8080
-      - traefik.http.services.flp.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.flp.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.flp.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.flp.loadbalancer.strategy=wrr
-
-  # AMM Factory Process
-  aos-amm-factory:
-    <<: *service-base
-    deploy:
-      replicas: 1
-    environment:
-      <<: *env-base
-      PROCESS_ID_TO_MONITOR: 3XBGLrygs11K63F_7mldWz4veNx6Llg6hI2yZs8LKHo
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.amm.rule=Query(`process-id`,`3XBGLrygs11K63F_7mldWz4veNx6Llg6hI2yZs8LKHo`)
-      - traefik.http.routers.amm.entrypoints=web
-      - traefik.http.services.amm.loadbalancer.server.port=8080
-      - traefik.http.services.amm.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.amm.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.amm.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.amm.loadbalancer.strategy=wrr
-
-
-  # Delegation Historian Process
-  aos-delegation-historian:
-    <<: *service-base
-    deploy:
-      replicas: 2
-    environment:
-      <<: *env-base
-      PROCESS_ID_TO_MONITOR: NRP0xtzeV9MHgwLmgD254erUB7mUjMBhBkYkNYkbNEo
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.delegation-historian.rule=Query(`process-id`,`NRP0xtzeV9MHgwLmgD254erUB7mUjMBhBkYkNYkbNEo`)
-      - traefik.http.routers.delegation-historian.entrypoints=web
-      - traefik.http.services.delegation-historian.loadbalancer.server.port=8080
-      - traefik.http.services.delegation-historian.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.delegation-historian.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.delegation-historian.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.delegation-historian.loadbalancer.strategy=wrr
-
-  # Botega FLP Process
-  aos-botega-flp:
-    <<: *service-base
-    environment:
-      <<: *env-base
-      PROCESS_ID_TO_MONITOR: UcBPqkaVI7W4I_YMznrt2JUoyc_7TScCdZWOOSBvMSU
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.botega-flp.rule=Query(`process-id`,`UcBPqkaVI7W4I_YMznrt2JUoyc_7TScCdZWOOSBvMSU`)
-      - traefik.http.routers.botega-flp.entrypoints=web
-      - traefik.http.services.botega-flp.loadbalancer.server.port=8080
-      - traefik.http.services.botega-flp.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.botega-flp.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.botega-flp.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.botega-flp.loadbalancer.strategy=wrr
-
-  # Auction Factory Staging Process
-  aos-auction-factory-staging:
-    <<: *service-base
-    environment:
-      <<: *env-base
-      PROCESS_ID_TO_MONITOR: q1aypD57W2L2mJiAN98gwKRWt6R8WU0waFFjDUPB00A
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.auction-factory-staging.rule=Query(`process-id`,`q1aypD57W2L2mJiAN98gwKRWt6R8WU0waFFjDUPB00A`)
-      - traefik.http.routers.auction-factory-staging.entrypoints=web
-      - traefik.http.services.auction-factory-staging.loadbalancer.server.port=8080
-      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.auction-factory-staging.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.auction-factory-staging.loadbalancer.strategy=wrr
-
-  aos-ao-token:
-    <<: *service-base
-    environment:
-      <<: *env-base
-      PROCESS_ID_TO_MONITOR: 0syT13r0s0tgPmIed95bJnuSqaD29HQNN8D3ElLSrsc
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.ao-token.rule=Query(`process-id`,`0syT13r0s0tgPmIed95bJnuSqaD29HQNN8D3ElLSrsc`)
-      - traefik.http.routers.ao-token.entrypoints=web
-      - traefik.http.services.ao-token.loadbalancer.server.port=8080
-      - traefik.http.services.ao-token.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.ao-token.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.ao-token.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.ao-token.loadbalancer.strategy=wrr
-
-
-  aos-war-token:
-    <<: *service-base
-    environment:
-      <<: *env-base
-      PROCESS_ID_TO_MONITOR: xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.war-token.rule=Query(`process-id`,`xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10`)
-      - traefik.http.routers.war-token.entrypoints=web
-      - traefik.http.services.war-token.loadbalancer.server.port=8080
-      - traefik.http.services.war-token.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.war-token.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.war-token.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.war-token.loadbalancer.strategy=wrr
-
-
-  aos-wusdc-token:
-    <<: *service-base
-    environment:
-      <<: *env-base
-      PROCESS_ID_TO_MONITOR: xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.wusdc-token.rule=Query(`process-id`,`xU9zFkq3X2ZQ6olwNVvr1vUWIjc3kXTWr7xKQD6dh10`)
-      - traefik.http.routers.wusdc-token.entrypoints=web
-      - traefik.http.services.wusdc-token.loadbalancer.server.port=8080
-      - traefik.http.services.wusdc-token.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.wusdc-token.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.wusdc-token.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.wusdc-token.loadbalancer.strategy=wrr
-        
-  aos-delegation-oracle:
-    <<: *service-base
-    environment:
-      <<: *env-base
-      PROCESS_ID_TO_MONITOR: cuxSKjGJ-WDB9PzSkVkVVrIBSh3DrYHYz44usQOj5yE
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.delegation-oracle.rule=Query(`process-id`,`cuxSKjGJ-WDB9PzSkVkVVrIBSh3DrYHYz44usQOj5yE`)
-      - traefik.http.routers.delegation-oracle.entrypoints=web
-      - traefik.http.services.delegation-oracle.loadbalancer.server.port=8080
-      - traefik.http.services.delegation-oracle.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.delegation-oracle.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.delegation-oracle.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.delegation-oracle.loadbalancer.strategy=wrr
-
-  aos-usds-oracle:
-    <<: *service-base
-    environment:
-      <<: *env-base
-      PROCESS_ID_TO_MONITOR: qjOMZnan8Vo2gaLaOF1FXbFXOQOn_5sKbYspNSVRyNY
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.usds-oracle.rule=Query(`process-id`,`qjOMZnan8Vo2gaLaOF1FXbFXOQOn_5sKbYspNSVRyNY`)
-      - traefik.http.routers.usds-oracle.entrypoints=web
-      - traefik.http.services.usds-oracle.loadbalancer.server.port=8080
-      - traefik.http.services.usds-oracle.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.usds-oracle.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.usds-oracle.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.usds-oracle.loadbalancer.strategy=wrr
-
-
-  aos-dai-oracle:
-    <<: *service-base
-    environment:
-      <<: *env-base
-      PROCESS_ID_TO_MONITOR: 5q8vpzC5QAKOAJFM26MAKfZw1gwtw7WA_J2861ZiKhI
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.dai-oracle.rule=Query(`process-id`,`5q8vpzC5QAKOAJFM26MAKfZw1gwtw7WA_J2861ZiKhI`)
-      - traefik.http.routers.dai-oracle.entrypoints=web
-      - traefik.http.services.dai-oracle.loadbalancer.server.port=8080
-      - traefik.http.services.dai-oracle.loadbalancer.healthcheck.path=/health
-      - traefik.http.services.dai-oracle.loadbalancer.healthcheck.interval=30s
-      - traefik.http.services.dai-oracle.loadbalancer.healthcheck.timeout=3s
-      - traefik.http.services.dai-oracle.loadbalancer.strategy=wrr
-
-  # ─── monitoring stack ─────────────────────────────────────────────
+  # Monitoring Stack
   prometheus:
     image: prom/prometheus
     command:
@@ -362,8 +66,8 @@ services:
     networks: [ aos-network ]
 
   grafana:
-    image: grafana/grafana:11.0.0 # latest LTS, May 2025
-    ports: [ "3005:3000" ] # browse → http://localhost:3005
+    image: grafana/grafana:11.0.0
+    ports: [ "3005:3000" ]
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
@@ -373,7 +77,6 @@ services:
       - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
     networks: [ aos-network ]
 
-  # node-exporter
   node-exporter:
     image: prom/node-exporter
     pid: host
@@ -381,7 +84,6 @@ services:
     command: [ "--path.rootfs=/host" ]
     networks: [ aos-network ]
 
-  # Docker container metrics exporter for Prometheus
   docker-exporter:
     image: prometheusnet/docker_exporter:latest
     volumes:
@@ -391,18 +93,18 @@ services:
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.49.1
-    privileged: true # needed on Docker-Desktop & SELinux
+    privileged: true
     command:
       - --housekeeping_interval=10s
       - --port=8081
       - --docker_only=true
-      - --store_container_labels=true # Enable container labels
+      - --store_container_labels=true
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro # ← gives API access
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
-    ports: [ "8081:8081" ] # Expose cAdvisor UI
+    ports: [ "8081:8081" ]
     networks: [ aos-network ]
 
 networks: { aos-network: {} }

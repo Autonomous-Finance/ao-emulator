@@ -1,10 +1,9 @@
 {
   "type": "module",
-  "name": "@permaweb/loco",
-  "version": "0.0.19",
+  "name": "ao-emulator",
+  "version": "0.0.20",
+  "description": "An emulator for AO processes. Initially developed by Autonomous Research. This project is archived and no longer maintained.",
   "main": "index.js",
-  "repository": "https://github.com/twilson63/aos-local.git",
-  "author": "Tom Wilson <tom@hyper.io>",
   "license": "MIT",
   "dependencies": {
     "@permaweb/ao-loader": "^0.0.49",
